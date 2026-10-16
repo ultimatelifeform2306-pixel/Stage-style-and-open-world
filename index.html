@@ -71,7 +71,54 @@ button { cursor: pointer; }
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .hud > * { pointer-events: auto; }
-.nameplate { position: absolute; left: max(24px, env(safe-area-inset-left, 0px)); top: 28px; max-width: min(42vw, 460px); }
+.nameplate { position: absolute; left: max(24px, env(safe-area-inset-left, 0px)); top: 150px; max-width: min(42vw, 460px); }
+
+/* Sparking Zero style fighter HUD: round portrait, stacked health bars that
+   change colour per bar, red damage chip that trails behind, segmented ki
+   gauge with a bar counter, and skill-count orbs. */
+.sz { position: absolute; left: max(18px, env(safe-area-inset-left, 0px)); top: 18px; width: min(560px, 50vw);
+  display: grid; grid-template-columns: 96px 1fr; align-items: center; cursor: crosshair; user-select: none;
+  --hp: #ffd21f; --hp-under: transparent; }
+.sz.shake { animation: szShake .28s linear; }
+@keyframes szShake { 20% { transform: translate(-5px, 2px); } 40% { transform: translate(4px, -2px); } 60% { transform: translate(-3px, 1px); } 80% { transform: translate(2px, 0); } }
+.sz-face { position: relative; z-index: 2; width: 96px; height: 96px; border-radius: 50%; overflow: hidden;
+  border: 4px solid #fff; box-shadow: 0 0 0 3px #000, 0 0 0 6px var(--char), 0 0 24px var(--char); background: #000; }
+.sz-face canvas { width: 100%; height: 100%; display: block; }
+.sz-face.ko { filter: grayscale(1) brightness(.6); }
+.sz-main { margin-left: -14px; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sz-name { padding-left: 34px; font: 800 italic 17px/1 var(--font-ui); letter-spacing: .14em; text-transform: uppercase;
+  text-shadow: 0 2px 0 #000, 0 0 8px #000; display: flex; gap: 10px; align-items: baseline; }
+.sz-name small { font: 700 12px/1 var(--font-mono); letter-spacing: 0; color: #ffe9a8; font-variant-numeric: tabular-nums; }
+.sz-hprow { position: relative; display: flex; align-items: center; padding-left: 18px; }
+.sz-count { position: relative; z-index: 1; width: 40px; height: 40px; margin-right: -8px; display: grid; place-items: center;
+  font: 400 26px/1 var(--font-display); color: #fff; -webkit-text-stroke: 1px #000; background: #12122a;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.sz-count::before { content: ""; position: absolute; inset: 3px; z-index: -1; background: var(--hp); clip-path: inherit; opacity: .9; }
+.sz-hp { position: relative; flex: 1; height: 26px; transform: skewX(-24deg); background: #120c0c;
+  border: 3px solid #000; outline: 2px solid rgba(255,255,255,.85); overflow: hidden; }
+.sz-hp i { position: absolute; top: 0; bottom: 0; left: 0; display: block; }
+.sz-hp .under { width: 100%; background: var(--hp-under); filter: brightness(.8); }
+.sz-hp .chip { background: linear-gradient(#ff7a7a, #d4001c); transition: none; }
+.sz-hp .fill { background: linear-gradient(180deg, color-mix(in srgb, var(--hp) 35%, #fff) 0 22%, var(--hp) 22% 70%, color-mix(in srgb, var(--hp) 70%, #000) 70%); }
+.sz-hp .fill::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 3px; background: #fff; box-shadow: 0 0 6px #fff; }
+.sz-hp .ticks { inset: 0; width: auto; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgba(0,0,0,.35) calc(10% - 1px) 10%); }
+.sz.low .sz-hp .fill { animation: szLow .6s ease-in-out infinite alternate; }
+@keyframes szLow { to { filter: brightness(1.4) saturate(1.4); } }
+.sz-hp .flash { inset: 0; width: auto; background: #fff; opacity: 0; }
+.sz-kirow { display: flex; align-items: center; gap: 8px; padding-left: 26px; }
+.sz-kinum { min-width: 22px; font: 400 26px/1 var(--font-display); color: var(--ki); -webkit-text-stroke: 1px #001a33;
+  text-shadow: 0 0 10px var(--ki); text-align: center; }
+.sz-ki { flex: 0 1 82%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; height: 14px; transform: skewX(-24deg); }
+.sz-ki span { position: relative; background: #07142a; border: 2px solid #000; outline: 1px solid rgba(160,220,255,.5); overflow: hidden; }
+.sz-ki span i { position: absolute; inset: 0 auto 0 0; display: block; background: linear-gradient(#bff0ff 0 25%, #2fb4ff 25% 75%, #0a66d6 75%); }
+.sz-ki span.full i { box-shadow: 0 0 10px #59c8ff; }
+.sz.sparking .sz-ki span i { background: linear-gradient(#fff6c2 0 25%, #ffd21f 25% 75%, #ff8a00 75%); animation: szLow .25s infinite alternate; }
+.sz-sub { display: flex; align-items: center; gap: 12px; padding-left: 30px; min-height: 18px; }
+.sz-skill { display: flex; gap: 5px; }
+.sz-skill span { width: 14px; height: 14px; transform: rotate(45deg); border: 2px solid #000; background: #2a1a0c; outline: 1px solid rgba(255,190,90,.45); }
+.sz-skill span.on { background: radial-gradient(circle at 35% 35%, #fff3c4, #ff9d00 55%, #c24a00); box-shadow: 0 0 8px #ff9d00; }
+.sz-tag { font: 800 italic 15px/1 var(--font-ui); letter-spacing: .18em; color: #ffd21f; text-shadow: 0 0 10px #ff8a00, 0 2px 0 #000; }
+.sz-tag.ko { color: #ff3b3b; text-shadow: 0 0 10px #ff0000, 0 2px 0 #000; }
 .eyebrow { font: 700 italic 14px/1 var(--font-ui); letter-spacing: .3em; text-transform: uppercase; color: var(--char); }
 .bigname {
   font-family: var(--font-display); font-size: clamp(56px, 9vw, 128px); line-height: .9; margin: 6px 0 4px;
@@ -205,6 +252,7 @@ button { cursor: pointer; }
   .app { height: auto; min-height: 100%; }
   #showcase { height: 100vh; min-height: 640px; }
   .nameplate { max-width: 60vw; }
+  .sz { width: min(520px, calc(100vw - 32px)); }
   .movelist { top: auto; bottom: 130px; height: 38%; width: min(300px, 55vw); }
   #editor { display: flex; flex-direction: column; height: auto; }
   .stageWrap { height: 60vh; min-height: 360px; order: 1; }
@@ -214,7 +262,10 @@ button { cursor: pointer; }
   .side { overflow: visible; }
 }
 @media (max-width: 560px) {
-  .nameplate { top: 14px; max-width: 100%; right: 16px; }
+  .nameplate { top: 128px; max-width: 100%; right: 16px; }
+  .sz { left: 12px; top: 12px; grid-template-columns: 72px 1fr; }
+  .sz-face { width: 72px; height: 72px; }
+  .sz-hp { height: 20px; } .sz-count { width: 32px; height: 32px; font-size: 20px; }
   .quote, .stats { display: none; }
   .movelist { width: auto; left: 16px; right: 16px; height: 30%; }
   .hint { display: none; }
@@ -237,6 +288,26 @@ button { cursor: pointer; }
   <section class="view" id="showcase">
     <canvas id="showCanvas"></canvas>
     <div class="hud">
+      <div class="sz" id="sz" title="Click (or press H) to land a hit">
+        <div class="sz-face" id="szFace"><canvas width="192" height="192"></canvas></div>
+        <div class="sz-main">
+          <div class="sz-name"><span id="szName">RYU</span><small id="szHpNum"></small></div>
+          <div class="sz-hprow">
+            <b class="sz-count" id="szCount">5</b>
+            <div class="sz-hp" id="szHp" role="meter" aria-label="Health" aria-valuemin="0">
+              <i class="under"></i><i class="chip" id="szChip"></i><i class="fill" id="szFill"></i><i class="ticks"></i><i class="flash" id="szFlash"></i>
+            </div>
+          </div>
+          <div class="sz-kirow">
+            <b class="sz-kinum" id="szKiNum">0</b>
+            <div class="sz-ki" id="szKi" role="meter" aria-label="Ki bars" aria-valuemin="0" aria-valuemax="5"></div>
+          </div>
+          <div class="sz-sub">
+            <div class="sz-skill" id="szSkill" aria-label="Skill count"></div>
+            <span class="sz-tag" id="szTag"></span>
+          </div>
+        </div>
+      </div>
       <div class="nameplate">
         <div class="eyebrow" id="scEyebrow">Fighter 01 · Rotterdam Arena</div>
         <h1 class="bigname" id="scName">RYU</h1>
@@ -253,7 +324,7 @@ button { cursor: pointer; }
         </div>
       </aside>
       <div class="roster" id="roster"></div>
-      <p class="hint">Click a move to play it. <kbd>←</kbd> <kbd>→</kbd> switch fighter, <kbd>E</kbd> edit.</p>
+      <p class="hint">Click a move to play it. <kbd>←</kbd> <kbd>→</kbd> switch fighter, <kbd>E</kbd> edit, <kbd>H</kbd> hit the health bar.</p>
     </div>
   </section>
 
@@ -696,11 +767,11 @@ const CHARS = {
   ryu: { id:'ryu', name:'RYU', title:'Wandering Warrior', accent:'#ff3b3b', ki:'rgba(90,200,255,.9)',
     quote:'Barefoot, red headband, one fist forward. He travels to find stronger opponents, and today the arena is the Maas.',
     len:{ spine:26, chest:30, neck:8, head:26, uarm:30, farm:27, hand:10, thigh:42, shin:40, foot:16 },
-    sole:4, headR:13, fxScale:1, outline:1, stats:{ Power:88, Speed:72, Ki:84, Guard:76 }, draw: drawRyu },
+    sole:4, headR:13, fxScale:1, outline:1, stats:{ Power:88, Speed:72, Ki:84, Guard:76 }, hpBars:5, draw: drawRyu },
   kirikou: { id:'kirikou', name:'KIRIKOU', title:'Small but Valiant', accent:'#ffaa1c', ki:'rgba(255,214,77,.9)',
     quote:'The smallest fighter in the roster and the fastest. He talks before he can walk and runs before anyone sees him.',
     len:{ spine:15, chest:14, neck:4, head:30, uarm:13, farm:12, hand:5, thigh:16, shin:15, foot:8 },
-    sole:2.4, headR:15, fxScale:.55, outline:.8, stats:{ Power:42, Speed:97, Ki:60, Wits:99 }, draw: drawKirikou },
+    sole:2.4, headR:15, fxScale:.55, outline:.8, stats:{ Power:42, Speed:97, Ki:60, Wits:99 }, hpBars:3, draw: drawKirikou },
 };
 const CHAR_IDS = ['ryu', 'kirikou'];
 
@@ -917,6 +988,7 @@ function renderShowHUD() {
   const c = ch();
   $('scEyebrow').textContent = `Fighter 0${CHAR_IDS.indexOf(c.id) + 1} · Rotterdam, Maas quay`;
   $('scName').textContent = c.name;
+  $('szName').textContent = c.name; drawHudFace();
   $('scTitle').textContent = c.title;
   $('scQuote').textContent = c.quote;
   $('scStats').innerHTML = Object.entries(c.stats).map(([k, v]) =>
@@ -1003,10 +1075,78 @@ function renderShow(dt) {
   }
   g.restore();
   drawCharacter(g, c, pose, performance.now() / 1000, s, drawOx, gy, false);
+  updateHud(dt, pose);
   if (S.flash > 0) { g.fillStyle = `rgba(255,255,255,${S.flash * .8})`; g.fillRect(0, 0, W, H); }
   // progress bar under the selected move
   g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(cx - 120 * dpr, H - 8 * dpr, 240 * dpr, 3 * dpr);
   g.fillStyle = c.accent; g.fillRect(cx - 120 * dpr, H - 8 * dpr, 240 * dpr * clamp(S.t / a.duration, 0, 1), 3 * dpr);
+}
+
+/* =====================================================================
+   SPARKING HUD (health / ki / skill count, Sparking Zero style)
+   One health bar = 10,000 HP; every bar has its own colour so the bar
+   underneath shows what is left. Ki charges from the move's Ki glow,
+   firing a projectile spends one ki bar. Clicking the HUD or H lands a hit.
+   ===================================================================== */
+const HP_BAR = 10000, KI_MAX = 5, SKILL_MAX = 5;
+const HP_COLORS = ['#ffd21f', '#7ee03a', '#22d3b4', '#3f8cff', '#b45cff'];   // bar 1 (last) .. bar 5
+const HUDS = {};
+const hud = () => HUDS[state.charId] || (HUDS[state.charId] = { hp: ch().hpBars * HP_BAR, chip: ch().hpBars * HP_BAR, chipWait: 0,
+  ki: 1, skill: 2, skillT: 0, ko: 0, refill: false, flash: 0, proj: 0 });
+$('szKi').innerHTML = '<span><i></i></span>'.repeat(KI_MAX);
+$('szSkill').innerHTML = '<span></span>'.repeat(SKILL_MAX);
+function hudHit(amount = 1800 + Math.random() * 4200) {
+  const h = hud();
+  if (h.hp <= 0 || h.refill) return;
+  h.hp = Math.max(0, h.hp - amount); h.chipWait = .5; h.flash = 1;
+  h.ki = Math.min(KI_MAX, h.ki + .15);                         // taking damage builds a little ki
+  const el = $('sz'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+}
+$('sz').addEventListener('click', () => hudHit());
+function drawHudFace() {
+  const c = ch(), cv = $('szFace').querySelector('canvas'), g = cv.getContext('2d'), W = cv.width;
+  const bg = g.createRadialGradient(W * .5, W * .4, 0, W * .5, W * .5, W * .7);
+  bg.addColorStop(0, c.accent); bg.addColorStop(1, '#14102c');
+  g.fillStyle = bg; g.fillRect(0, 0, W, W);
+  const pose = sample(c, idleOf(DB[c.id]), 0), J = solve(c, pose), hd = J.head;
+  const s = W * .3 / c.headR, hx = (hd.x + hd.ex) / 2, hy = (hd.y + hd.ey) / 2;
+  drawCharacter(g, c, pose, 0, s, W * .5 - hx * s, W * .55 - hy * s, false);
+}
+function updateHud(dt, pose) {
+  const h = hud(), c = ch(), max = c.hpBars * HP_BAR;
+  // ki: charge while the move glows, spend a bar when a projectile leaves the hand
+  h.ki = clamp(h.ki + (pose.ki || 0) * dt * 1.4 + dt * .04, 0, KI_MAX);
+  if ((pose.proj || 0) > .03 && h.proj <= .03 && h.ki >= 1) h.ki -= 1;
+  h.proj = pose.proj || 0;
+  if ((h.skillT += dt) > 6) { h.skillT = 0; h.skill = Math.min(SKILL_MAX, h.skill + 1); }
+  // damage chip waits, then drains toward the real HP
+  if (h.chipWait > 0) h.chipWait -= dt; else h.chip = Math.max(h.hp, h.chip - HP_BAR * 1.6 * dt);
+  h.flash = Math.max(0, h.flash - dt * 5);
+  // KO: hold, then refill like training mode
+  if (h.hp <= 0 && !h.refill) { if ((h.ko += dt) > 1.6) { h.refill = true; h.ko = 0; } }
+  if (h.refill) { h.hp = Math.min(max, h.hp + max * .9 * dt); h.chip = h.hp; if (h.hp >= max) h.refill = false; }
+
+  const n = Math.ceil(h.hp / HP_BAR - 1e-6), base = Math.max(0, n - 1) * HP_BAR;
+  const frac = n ? (h.hp - base) / HP_BAR : 0, chipFrac = h.chip > base + HP_BAR ? 1 : clamp((h.chip - base) / HP_BAR, 0, 1);
+  const sz = $('sz');
+  sz.style.setProperty('--hp', HP_COLORS[Math.max(0, n - 1) % HP_COLORS.length]);
+  sz.style.setProperty('--hp-under', n > 1 ? HP_COLORS[(n - 2) % HP_COLORS.length] : 'transparent');
+  $('szFill').style.width = (frac * 100) + '%';
+  $('szChip').style.width = (chipFrac * 100) + '%';
+  $('szFlash').style.opacity = h.flash * .7;
+  $('szCount').textContent = n;
+  $('szHpNum').textContent = Math.ceil(h.hp).toLocaleString('en-US');
+  const hpEl = $('szHp'); hpEl.setAttribute('aria-valuemax', max); hpEl.setAttribute('aria-valuenow', Math.ceil(h.hp));
+  sz.classList.toggle('low', n === 1 && frac < .3);
+  const kiFull = Math.floor(h.ki + 1e-6);
+  $('szKiNum').textContent = kiFull; $('szKi').setAttribute('aria-valuenow', kiFull);
+  $('szKi').querySelectorAll('span').forEach((sp, i) => { const f = clamp(h.ki - i, 0, 1); sp.firstChild.style.width = (f * 100) + '%'; sp.classList.toggle('full', f >= 1); });
+  $('szSkill').querySelectorAll('span').forEach((sp, i) => sp.classList.toggle('on', i < h.skill));
+  const sparking = h.ki >= KI_MAX - 1e-6;
+  sz.classList.toggle('sparking', sparking);
+  $('szFace').classList.toggle('ko', h.hp <= 0);
+  const tag = $('szTag'), label = h.hp <= 0 ? 'K.O.' : sparking ? 'SPARKING!' : '';
+  if (tag.textContent !== label) { tag.textContent = label; tag.classList.toggle('ko', h.hp <= 0); }
 }
 
 /* =====================================================================
@@ -1345,6 +1485,7 @@ window.addEventListener('keydown', e => {
   if (state.view === 'show') {
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { const i = CHAR_IDS.indexOf(state.charId); switchChar(CHAR_IDS[(i + (e.key === 'ArrowRight' ? 1 : CHAR_IDS.length - 1)) % CHAR_IDS.length]); }
     else if (e.key === 'e' || e.key === 'E') openEditor(S.animId);
+    else if (e.key === 'h' || e.key === 'H') hudHit();
     else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { const l = anims(), i = l.findIndex(a => a.id === S.animId); showSelect(l[(i + (e.key === 'ArrowDown' ? 1 : l.length - 1)) % l.length].id); e.preventDefault(); }
     return;
   }
