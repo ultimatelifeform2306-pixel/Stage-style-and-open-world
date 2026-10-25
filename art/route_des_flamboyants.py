@@ -1,34 +1,31 @@
 """Render a 16-bit style screen of 'La route des flamboyants' (fan-art homage).
 
-Draws at 320x224 (SNES/Genesis resolution) with a fixed palette and
-ordered dithering, then upscales 4x with nearest-neighbour.
+Side-on shot like the film: a row of flame trees whose red crowns merge into
+one ceiling of blossom over a clear blue sky, with slender dark trunks forking
+into fans of branches and a villager walking past with spear and shield.
+Drawn at 320x224 (Mega Drive resolution) with a fixed palette and ordered
+dithering, then upscaled 4x with nearest-neighbour.
 """
 import math
 import random
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 W, H = 320, 224
 SCALE = 4
-HORIZON = 112
-VP = (160, HORIZON)
-rng = random.Random(7)
+GROUND = 211
+rng = random.Random(11)
 
 P = {
-    "sky0": (40, 48, 120), "sky1": (88, 80, 168), "sky2": (176, 104, 160),
-    "sky3": (240, 136, 112), "sky4": (248, 184, 104), "sky5": (252, 224, 152),
-    "sun": (255, 244, 200),
-    "hill_far": (152, 96, 120), "hill_near": (112, 80, 88),
-    "grass0": (216, 176, 80), "grass1": (184, 144, 56), "grass2": (144, 112, 40),
-    "grass3": (96, 80, 32),
-    "road0": (200, 96, 56), "road1": (176, 80, 48), "road2": (136, 56, 40),
-    "road3": (224, 128, 80),
-    "trunk0": (96, 56, 40), "trunk1": (64, 36, 32), "trunk2": (136, 88, 56),
-    "fl0": (248, 72, 40), "fl1": (216, 40, 32), "fl2": (152, 24, 32),
-    "fl3": (255, 152, 64), "leaf0": (56, 120, 48), "leaf1": (32, 80, 40),
-    "thatch0": (200, 160, 88), "thatch1": (152, 112, 56), "mud": (168, 104, 64),
-    "mud1": (120, 72, 48), "black": (16, 12, 16), "white": (248, 240, 224),
-    "skin": (72, 40, 32),
+    "sky0": (24, 72, 184), "sky1": (40, 104, 216), "sky2": (72, 144, 232),
+    "sky3": (120, 184, 240), "sky4": (176, 216, 244), "sky5": (216, 236, 248),
+    "red0": (112, 8, 16), "red1": (160, 16, 20), "red2": (204, 24, 24),
+    "red3": (232, 48, 32), "red4": (248, 96, 64), "red5": (255, 160, 120),
+    "bark0": (44, 38, 40), "bark1": (60, 52, 52), "bark2": (112, 102, 100),
+    "haze0": (120, 136, 152), "haze1": (88, 96, 104), "haze2": (152, 168, 176),
+    "dirt0": (56, 40, 36), "dirt1": (88, 64, 52), "dirt2": (40, 28, 28),
+    "skin0": (56, 32, 28), "skin1": (88, 52, 40), "cloth": (176, 32, 32),
+    "hide0": (208, 168, 112), "hide1": (160, 120, 80), "spear": (136, 124, 112),
 }
 
 BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
@@ -49,199 +46,150 @@ def dither_band(y0, y1, colors):
             px[x, y] = colors[i + 1] if f * 16 > BAYER[y % 4][x % 4] + 0.5 else colors[i]
 
 
-# Sky and sun
-dither_band(0, HORIZON, [P["sky0"], P["sky1"], P["sky2"], P["sky3"], P["sky4"], P["sky5"]])
-d.ellipse((196, 58, 244, 106), fill=P["sun"])
-for y in (70, 80, 88, 94, 99):  # retro sun stripes
-    d.line((190, y, 250, y), fill=P["sky4"] if y > 85 else P["sky3"])
-# Pixel clouds
-for cx, cy, w in ((40, 30, 46), (120, 18, 30), (270, 40, 38), (90, 60, 26)):
-    for k in range(4):
-        d.ellipse((cx + k * w // 5, cy - 4 + (k % 2) * 2, cx + k * w // 5 + w // 2, cy + 4), fill=P["sky2"] if cy < 40 else P["sky4"])
-    d.line((cx + 2, cy + 4, cx + w, cy + 4), fill=P["sky1"] if cy < 40 else P["sky3"])
+def limb(p0, p1, p2, w0, w1, col, hi=None):
+    """Tapered branch along a quadratic bezier p0 -> p2 bending through p1."""
+    steps = int(math.dist(p0, p2)) + 2
+    for i in range(steps + 1):
+        t = i / steps
+        x = (1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0]
+        y = (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]
+        r = (w0 + (w1 - w0) * t) / 2
+        d.ellipse((x - r, y - r, x + r, y + r), fill=col)
+        if hi and r >= 1.5:
+            px[int(x - r + 0.5), int(y)] = hi
 
-# Distant hills
+
+# Sky: deep blue overhead fading to pale haze at the horizon
+dither_band(0, 100, [P["sky0"], P["sky1"]])
+dither_band(100, GROUND, [P["sky1"], P["sky2"], P["sky3"], P["sky4"], P["sky5"]])
+
+# Hazy distant bush line on the horizon
 for x in range(W):
-    h1 = 10 + 5 * math.sin(x * 0.03) + 3 * math.sin(x * 0.11 + 1)
-    d.line((x, HORIZON - int(h1), x, HORIZON), fill=P["hill_far"])
-for x in range(W):
-    h2 = 4 + 3 * math.sin(x * 0.05 + 2) + 2 * math.sin(x * 0.17)
-    d.line((x, HORIZON - int(h2), x, HORIZON), fill=P["hill_near"])
+    h = 3 + 2 * math.sin(x * 0.09) + 2 * math.sin(x * 0.23 + 2)
+    d.line((x, GROUND - int(h), x, GROUND), fill=P["haze2"])
+for _ in range(26):
+    x = rng.randint(0, W)
+    w, h = rng.randint(4, 14), rng.randint(3, 9)
+    d.ellipse((x - w, GROUND - h, x + w, GROUND + 2), fill=rng.choice((P["haze0"], P["haze1"])))
+for x in (36, 104, 152, 258, 300):  # little far-off trees
+    d.line((x, GROUND - 4, x, GROUND - 12), fill=P["haze1"])
+    d.ellipse((x - 5, GROUND - 17, x + 5, GROUND - 10), fill=P["haze0"])
+
+# Ground strip
+d.rectangle((0, GROUND, W, H), fill=P["dirt0"])
+d.line((0, GROUND, W, GROUND), fill=P["dirt1"])
+for _ in range(500):
+    x, y = rng.randrange(W), rng.randint(GROUND + 1, H - 1)
+    px[x, y] = rng.choice((P["dirt1"], P["dirt2"], P["dirt2"]))
+
+# Trees: slender dark trunks that fork into a fan of upswept limbs
+TREES = [(6, 150), (21, 158), (86, 160), (123, 150), (210, 156), (229, 146), (294, 158)]
+twig_tips = []
+for tx, fork in TREES:
+    lean = rng.uniform(-3, 3)
+    top = (tx + lean, fork)
+    limb((tx, GROUND + 1), (tx, (GROUND + fork) / 2), top, 5, 4, P["bark0"], P["bark2"])
+    d.polygon([(tx - 4, GROUND + 1), (tx + 4, GROUND + 1), (tx + 2, GROUND - 5), (tx - 2, GROUND - 5)], fill=P["bark0"])
+    for ang in rng.sample((-50, -28, -8, 14, 34, 52), 4):
+        ang += rng.uniform(-6, 6)
+        a = math.radians(ang)
+        length = rng.uniform(50, 66)
+        end = (top[0] + math.sin(a) * length, top[1] - math.cos(a) * length)
+        mid = (top[0] + math.sin(a) * length * 0.3, top[1] - length * 0.55)
+        limb(top, mid, end, 3, 1, P["bark1"], P["bark2"])
+        twig_tips.append(end)
+        # one side twig off each limb
+        for _ in range(1):
+            s = rng.uniform(0.45, 0.8)
+            bx = top[0] + (end[0] - top[0]) * s
+            by = top[1] + (end[1] - top[1]) * s
+            a2 = a + rng.choice((-1, 1)) * rng.uniform(0.3, 0.7)
+            l2 = rng.uniform(10, 20)
+            limb((bx, by), (bx + math.sin(a2) * l2 * 0.5, by - l2 * 0.6),
+                 (bx + math.sin(a2) * l2, by - math.cos(a2) * l2), 1, 1, P["bark1"])
 
 
-def baobab(x, base, s, col):
-    d.rectangle((x - 2 * s, base - 9 * s, x + 2 * s, base), fill=col)
-    for dx, dy in ((-5, -12), (-2, -14), (2, -13), (5, -11)):
-        d.line((x, base - 8 * s, x + dx * s, base + dy * s), fill=col, width=max(1, s))
-        d.line((x + dx * s, base + dy * s, x + dx * s + s, base + dy * s - 2 * s), fill=col)
+def canopy_bottom(x):
+    return 116 + 7 * math.sin(x * 0.045 + 0.6) + 4 * math.sin(x * 0.12 + 2) + 3 * math.sin(x * 0.31)
 
 
-baobab(34, HORIZON - 4, 1, P["hill_near"])
-baobab(282, HORIZON - 2, 1, P["hill_near"])
-
-# Savanna ground
-dither_band(HORIZON, H, [P["grass1"], P["grass0"], P["grass1"], P["grass2"]])
-for _ in range(900):  # grass tufts, denser/larger near the bottom
-    y = rng.randint(HORIZON + 2, H - 1)
-    x = rng.randint(0, W - 1)
-    tall = 1 + (y - HORIZON) // 30
-    c = rng.choice((P["grass2"], P["grass3"], P["grass0"]))
-    d.line((x, y, x + rng.choice((-1, 0, 1)), y - tall), fill=c)
-
-# Road in perspective
-road_half_bottom = 92
-for y in range(HORIZON, H):
-    t = (y - HORIZON) / (H - HORIZON)
-    hw = 2 + t * road_half_bottom
-    x0, x1 = int(VP[0] - hw), int(VP[0] + hw)
-    z = 1 / max(t, 0.02)
-    band = int(z * 3) % 2  # stripes that compress toward the horizon
-    for x in range(max(0, x0), min(W, x1 + 1)):
-        edge = x - x0 < 1 + t * 4 or x1 - x < 1 + t * 4
-        if edge:
-            c = P["road2"]
-        else:
-            u = (x - VP[0]) / hw
-            rut = abs(abs(u) - 0.45) < 0.06
-            c = P["road2"] if rut else (P["road1"] if band else P["road0"])
-            if not rut and BAYER[y % 4][x % 4] > 13 and t > 0.3:
-                c = P["road3"]
-        px[x, y] = c
+def canopy_top(x):
+    return 4 + 9 * math.sin(x * 0.035 + 1.3) + 5 * math.sin(x * 0.11)
 
 
-def project(side, z):
-    """Screen position and scale of a roadside point at depth z (1 = bottom)."""
-    t = 1 / z
-    y = HORIZON + t * (H - HORIZON)
-    hw = 2 + t * road_half_bottom
-    x = VP[0] + side * (hw + 14 * t + 6)
-    return x, y, t
+def blossom_clump(cx, cy, rx, ry):
+    """One tuft of flowers: dark underside, red body, sunlit crown, scalloped edge."""
+    d.ellipse((cx - rx, cy - ry + 2, cx + rx, cy + ry + 2), fill=P["red0"])
+    d.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=P["red1"])
+    for k in range(7):  # ragged petal outline
+        a = k / 7 * math.tau + rng.uniform(0, 0.6)
+        ex, ey = cx + math.cos(a) * rx, cy + math.sin(a) * ry
+        r = rng.uniform(2, 4)
+        d.ellipse((ex - r, ey - r, ex + r, ey + r), fill=P["red1"] if math.sin(a) > 0 else P["red2"])
+    d.ellipse((cx - rx * 0.8, cy - ry * 0.9, cx + rx * 0.6, cy + ry * 0.4), fill=P["red2"])
+    d.ellipse((cx - rx * 0.6, cy - ry * 0.85, cx + rx * 0.3, cy - ry * 0.05), fill=P["red3"])
+    for _ in range(int(rx * ry / 10)):  # individual blossoms catching the light
+        sx = int(cx + rng.uniform(-rx * 0.7, rx * 0.5))
+        sy = int(cy + rng.uniform(-ry * 0.9, ry * 0.2))
+        if 0 <= sx < W and 0 <= sy < H:
+            px[sx, sy] = rng.choice((P["red4"], P["red4"], P["red5"], P["red3"]))
 
 
-def hut(x, base, s):
-    w, h = int(10 * s), int(8 * s)
-    d.rectangle((x - w // 2, base - h, x + w // 2, base), fill=P["mud"])
-    d.rectangle((x - w // 2, base - h, x - w // 2 + max(1, w // 5), base), fill=P["mud1"])
-    d.rectangle((x - max(1, w // 8), base - h // 2, x + max(1, w // 8), base), fill=P["black"])
-    d.polygon([(x - w // 2 - 3 * s, base - h + 1), (x, base - h - 9 * s), (x + w // 2 + 3 * s, base - h + 1)], fill=P["thatch0"])
-    d.line((x, base - h - 9 * s, x + w // 2 + 3 * s, base - h + 1), fill=P["thatch1"])
-    for k in range(1, 4):
-        yy = base - h - 9 * s + k * (9 * s) // 4
-        d.line((x - k * w // 6, yy, x + k * w // 6, yy), fill=P["thatch1"])
+# Fill the ceiling of blossom; lower clumps drawn last so they sit in front
+clumps = []
+for row, gy in enumerate(range(-6, 140, 11)):
+    for gx in range(-14, W + 16, 17):
+        x = gx + rng.uniform(-5, 5) + (row % 2) * 8
+        y = gy + rng.uniform(-3, 3)
+        if canopy_top(x) + 4 <= y <= canopy_bottom(x) - 8:
+            clumps.append((x, y, rng.uniform(13, 20), rng.uniform(8, 11)))
+for tx, ty in twig_tips:  # tufts at the ends of the limbs so branches feed into blossom
+    if ty < canopy_bottom(tx) + 6:
+        clumps.append((tx, ty - 3, rng.uniform(8, 12), rng.uniform(5, 7)))
+for c in sorted(clumps, key=lambda c: c[1]):
+    blossom_clump(*c)
+
+# Break up the clump shapes with petal-sized flecks so it reads as blossom, not bubbles
+reds = {P["red1"], P["red2"], P["red3"]}
+for y in range(H):
+    for x in range(W):
+        if px[x, y] in reds and rng.random() < 0.12:
+            px[x, y] = rng.choice((P["red0"], P["red1"], P["red3"], P["red4"]))
 
 
-hut(250, 128, 1)
-hut(270, 131, 1.3)
-hut(58, 130, 1.2)
+
+def villager(x, base):
+    """Original sprite: a hunter walking left, spear forward, hide shield on his back."""
+    k, k1 = P["skin0"], P["skin1"]
+    d.ellipse((x + 4, base - 42, x + 17, base - 12), fill=P["hide1"])          # shield
+    d.ellipse((x + 5, base - 41, x + 15, base - 14), fill=P["hide0"])
+    d.line((x + 10, base - 39, x + 10, base - 16), fill=P["hide1"])
+    d.line((x + 1, base - 22, x + 7, base - 1), fill=k, width=3)              # back leg
+    d.line((x + 7, base - 1, x + 10, base - 1), fill=k)
+    d.line((x - 1, base - 22, x - 8, base - 2), fill=k, width=3)              # front leg
+    d.line((x - 8, base - 1, x - 11, base - 1), fill=k)
+    d.polygon([(x - 4, base - 38), (x + 4, base - 38), (x + 3, base - 22), (x - 3, base - 22)], fill=k)
+    d.line((x - 4, base - 37, x - 3, base - 24), fill=k1)                     # rim light
+    d.rectangle((x - 4, base - 24, x + 4, base - 19), fill=P["cloth"])        # loincloth
+    d.polygon([(x - 2, base - 19), (x + 2, base - 19), (x - 1, base - 14)], fill=P["cloth"])
+    d.ellipse((x - 4, base - 47, x + 3, base - 39), fill=k)                   # head
+    px[x - 4, base - 43] = k1
+    d.line((x - 2, base - 36, x - 9, base - 29), fill=k, width=2)             # arm
+    d.line((x - 34, base - 31, x + 9, base - 26), fill=P["spear"])            # spear
+    d.polygon([(x - 38, base - 31), (x - 33, base - 33), (x - 32, base - 30)], fill=P["haze2"])
+    d.line((x - 7, base, x + 9, base), fill=P["dirt2"])                       # shadow
 
 
-def flamboyant(x, base, s):
-    """Delonix regia: short trunk, forked limbs, a wide flat umbrella of red blossom."""
-    th = 22 * s
-    tw = max(1, int(3 * s))
-    d.rectangle((x - tw // 2, base - th, x + tw // 2, base), fill=P["trunk0"])
-    d.line((x + tw // 2, base - th, x + tw // 2, base), fill=P["trunk1"])
-    d.line((x - tw // 2, base - th, x - tw // 2, base), fill=P["trunk2"])
-    top = base - th
-    limbs = [(-22, -12), (-10, -18), (4, -19), (18, -13), (26, -8)]
-    for lx, ly in limbs:
-        d.line((x, top + 2 * s, x + lx * s, top + ly * s), fill=P["trunk0"], width=max(1, int(2 * s)))
-    cw, ch = 40 * s, 14 * s
-    cy = top - 14 * s
-    # canopy: layered blobs (shadow -> body -> highlight), leaves peeking through
-    blobs = [(rng.uniform(-1, 1), rng.uniform(-0.6, 0.5)) for _ in range(int(26 + 30 * s))]
-    for layer, col, off, r in (("shadow", P["fl2"], 2, 1.0), ("leaf", P["leaf1"], 1, 0.7),
-                               ("body", P["fl1"], 0, 0.9), ("main", P["fl0"], -1, 0.75),
-                               ("hi", P["fl3"], -2, 0.35)):
-        for i, (bx, by) in enumerate(blobs):
-            if layer == "leaf" and i % 3:
-                continue
-            if layer == "hi" and (by > 0 or i % 2):
-                continue
-            rad = max(1, int((5 + (i * 7) % 4) * s * r))
-            cx = x + bx * (cw - rad)
-            cyy = cy + by * ch + off * s
-            d.ellipse((cx - rad * 1.4, cyy - rad, cx + rad * 1.4, cyy + rad), fill=col)
-    # scattered blossom speckles
-    for _ in range(int(60 * s)):
-        sx = x + rng.uniform(-cw, cw)
-        sy = cy + rng.uniform(-ch * 0.8, ch * 0.8)
-        if px[int(max(0, min(W - 1, sx))), int(max(0, min(H - 1, sy)))] in (P["fl0"], P["fl1"]):
-            px[int(sx), int(sy)] = rng.choice((P["fl3"], P["fl2"], P["leaf0"]))
-    # fallen petals underneath
-    for _ in range(int(40 * s)):
-        fx = int(x + rng.uniform(-cw, cw))
-        fy = int(base + rng.uniform(-2 * s, 6 * s))
-        if 0 <= fx < W and 0 <= fy < H:
-            px[fx, fy] = rng.choice((P["fl0"], P["fl1"]))
-
-
-# Avenue of trees, far to near so near trees overlap far ones
-trees = []
-for z in (9.0, 6.0, 4.2, 3.0, 2.2, 1.6, 1.15):
-    for side in (-1, 1):
-        trees.append((z * (1.08 if side > 0 else 1.0), side))
-for z, side in sorted(trees, reverse=True):
-    x, y, t = project(side, z)
-    flamboyant(x, y, t * 1.25)
-
-# Petals drifting on the road
-for _ in range(220):
-    t = rng.random() ** 0.6
-    y = int(HORIZON + 3 + t * (H - HORIZON - 4))
-    hw = 2 + t * road_half_bottom
-    x = int(VP[0] + rng.uniform(-hw, hw))
-    px[x, y] = rng.choice((P["fl0"], P["fl1"], P["fl3"]))
-    if t > 0.6 and x + 1 < W:
-        px[x + 1, y] = P["fl1"]
-
-
-def little_hero(x, base):
-    """Tiny original sprite of a small village boy running down the road."""
-    sprite = [
-        "...KKK...",
-        "..KKKKK..",
-        "..KKWKK..",
-        "..KKKKK..",
-        "...KKK...",
-        ".K.KKK.K.",
-        "K..KKK..K",
-        "...KKK...",
-        "...SSS...",
-        "...K.K...",
-        "..K...K..",
-        ".K.....K.",
-    ]
-    cmap = {"K": P["skin"], "W": P["white"], "S": P["black"]}
-    for j, row in enumerate(sprite):
-        for i, ch in enumerate(row):
-            if ch in cmap:
-                px[x + i, base - len(sprite) + j] = cmap[ch]
-    d.line((x + 1, base + 1, x + 7, base + 1), fill=P["road2"])  # shadow
-
-
-little_hero(150, 196)
-
-# Stage title card, Super Famicom style
-font = ImageFont.load_default()
-title = "LA ROUTE DES FLAMBOYANTS"
-tw = d.textlength(title, font=font)
-bx0, bx1 = int(160 - tw / 2 - 10), int(160 + tw / 2 + 10)
-d.rectangle((bx0, 6, bx1, 22), fill=P["black"])
-d.rectangle((bx0 + 1, 7, bx1 - 1, 21), outline=P["fl3"])
-d.text((160 - tw / 2 + 1, 9), title, font=font, fill=P["fl2"])
-d.text((160 - tw / 2, 8), title, font=font, fill=P["sky5"])
-d.text((8, H - 14), "STAGE 2", font=font, fill=P["black"])
-d.text((7, H - 15), "STAGE 2", font=font, fill=P["white"])
+villager(74, GROUND + 6)
 
 # Snap every pixel to the palette so the frame stays strictly 16-bit-ish
 pal = list(P.values())
+palset = set(pal)
 for y in range(H):
     for x in range(W):
         c = px[x, y]
-        if c not in P.values():
+        if c not in palset:
             px[x, y] = min(pal, key=lambda q: sum((a - b) ** 2 for a, b in zip(q, c)))
 
 out = img.resize((W * SCALE, H * SCALE), Image.NEAREST)
 out.save(__file__.replace(".py", ".png"))
-print("colors:", len(set(img.getdata())))
