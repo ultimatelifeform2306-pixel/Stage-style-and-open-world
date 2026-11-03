@@ -202,7 +202,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103d";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261103e";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -473,26 +473,28 @@ body {
     her:   { x: 24, y: 40, z: 2.7, bw: 1, slow: true },
   };
   // at: seconds from the start of the fade in. add: the text goes on the same line as the one before it
+  // at = when it is said in friends.mp3 (seconds from the start of the fade in), dur = how long it is said;
+  // lines with no dur have no recording yet and type on their own
   const FRIENDS = [
-    { at: 3.0,  pic: "friends", view: "full", text: "They were all there." },
-    { at: 5.6,  text: "His friends…" },
-    { at: 7.6,  pic: "sonic",  text: "Sonic…" },
-    { at: 8.7,  pic: "shadow", text: "Shadow…", add: true },
-    { at: 9.8,  pic: "silver", text: "Silver…", add: true },
-    { at: 10.9, pic: "goku",   text: "Black Goku…", add: true },
-    { at: 12.2, pic: "friends", view: "chun", text: "Chun-Li…" },
-    { at: 13.6, view: "kenos", text: "Kenos…", add: true },
-    { at: 15.0, view: "full", text: "Everyone" },
-    { at: 16.8, text: "And…" },
-    { at: 18.2, view: "her" },
-    { at: 21.6, text: "…her." },
-    { at: 23.6, text: "His girlfriend." },
-    { at: 25.6, text: "The one who wouldn't let go of him." },
-    { at: 28.4, text: "Her arms wrapped around him, holding on like she would never leave." },
-    { at: 33.2, text: "Back then, he believed her.", last: true },
+    { at: 3.00,  dur: 1.32, pic: "friends", view: "full", text: "They were all there." },
+    { at: 4.92,  dur: 0.90, text: "His friends…" },
+    { at: 6.08,  dur: 0.65, pic: "sonic",  text: "Sonic…" },
+    { at: 6.94,  dur: 0.76, pic: "shadow", text: "Shadow…", add: true },
+    { at: 7.91,  dur: 0.66, pic: "silver", text: "Silver…", add: true },
+    { at: 8.84,  dur: 1.01, pic: "goku",   text: "Black Goku…", add: true },
+    { at: 10.17, dur: 0.76, pic: "friends", view: "chun", text: "Chun-Li…" },
+    { at: 11.15, dur: 0.62, view: "kenos", text: "Kenos…", add: true },
+    { at: 11.94, dur: 0.86, view: "full", text: "Everyone" },
+    { at: 14.00, dur: 0.41, text: "And…" },
+    { at: 14.60, view: "her" },
+    { at: 19.50, dur: 0.58, text: "…her." },
+    { at: 21.00, dur: 1.01, text: "His girlfriend." },
+    { at: 23.40, text: "The one who wouldn't let go of him." },
+    { at: 26.20, text: "Her arms wrapped around him, holding on like she would never leave." },
+    { at: 31.00, text: "Back then, he believed her.", last: true },
   ];
   const TYPE_CPS = 17;   // letters per second for the subtitles in this scene
-  let fStart = 0, fCue = -1, fBase = "", fLine = "", fLineAt = 0;
+  let fStart = 0, fCue = -1, fBase = "", fLine = "", fLineAt = 0, fLineDur = 0, fEndedAt = 0;
 
   function showPic(name) {
     scImg.className = "";
@@ -520,11 +522,24 @@ body {
     void scImg.offsetWidth;
     scImg.style.transition = "opacity 3s linear";
     scImg.style.opacity = "1";
-    fStart = performance.now(); fCue = -1; fBase = ""; fLine = ""; fLineAt = 0;
+    fStart = performance.now(); fCue = -1; fBase = ""; fLine = ""; fLineAt = 0; fLineDur = 0; fEndedAt = 0;
+    if (narrOK) { // the scene's voice runs from the first frame of the fade in
+      voice.src = ACT1_DIR + "friends.mp3" + VER; voice.dataset.clip = "friends";
+      const p = voice.play(); if (p && p.catch) p.catch(() => { narrOK = false; });
+    }
+  }
+
+  function friendsTime(now) { // follow the voice; after it ends (or without it) a clock carries on
+    const el = (now - fStart) / 1000;
+    if (narrOK && voice.dataset.clip === "friends") {
+      if (voice.ended) { if (!fEndedAt) fEndedAt = now; return voice.duration + (now - fEndedAt) / 1000; }
+      if (el < voice.currentTime + 3) return voice.currentTime;
+    }
+    return el;
   }
 
   function tickFriends(now) {
-    const t = (now - fStart) / 1000;
+    const t = friendsTime(now);
     while (fCue + 1 < FRIENDS.length && t >= FRIENDS[fCue + 1].at) {
       const c = FRIENDS[++fCue];
       if (c.pic && !(c.pic === "friends" && fCue === 0)) showPic(c.pic);
@@ -532,11 +547,11 @@ body {
       if (c.text) {
         fBase = c.add ? (fBase + (fLine ? fLine + " " : "")) : "";
         if (!c.add) fBase = "";
-        fLine = c.text; fLineAt = c.at;
+        fLine = c.text; fLineAt = c.at; fLineDur = c.dur || c.text.length / TYPE_CPS;
       }
     }
     if (fLine) {
-      const n = Math.min(fLine.length, Math.floor((t - fLineAt) * TYPE_CPS));
+      const n = Math.min(fLine.length, Math.floor(fLine.length * Math.max(0, (t - fLineAt) / fLineDur)));
       const html = esc(fBase + fLine.slice(0, n));
       if (html !== shown) { shown = html; sub.innerHTML = html; }
       if (fCue === FRIENDS.length - 1 && n >= fLine.length) state = "frozen"; // the story stops here
