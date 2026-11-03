@@ -202,8 +202,10 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103c";   // new number on each update so phones don't keep an old copy
-  const voice = new Audio(VOICE_DIR + "itachi_intro.mp3" + VER);
+  const VER = "?v=20261103d";   // new number on each update so phones don't keep an old copy
+  let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
+  const voice = new Audio(introSrc);
+  voice.dataset.clip = "intro";
   voice.preload = "auto";
   voice.setAttribute("playsinline", "");
   let voiceOK = true;
@@ -214,7 +216,7 @@ body {
   let bakedName = false;
   if (slug) {
     fetch(VOICE_DIR + "voices/" + slug + ".mp3", { method: "HEAD" }).then(r => {
-      if (r.ok && state === "idle") { voice.src = VOICE_DIR + "voices/" + slug + ".mp3" + VER; voice.load(); bakedName = true; }
+      if (r.ok && state === "idle") { introSrc = VOICE_DIR + "voices/" + slug + ".mp3" + VER; voice.src = introSrc; voice.load(); bakedName = true; }
     }).catch(() => {});
   }
 
@@ -257,15 +259,18 @@ body {
     .forEach(([clip, at], i) => { SCENES[i].clip = clip; SCENES[i].clipAt = at; });
   SCENES.forEach(sc => { sc.seg = [sc.parts[0][0], sc.parts[sc.parts.length - 1][1]]; sc.text = sc.parts.map(q => q[2]).join(" "); });
   const SCENE_WAIT = 30;   // seconds before the story moves on by itself
-  const narr = new Audio(ACT1_DIR + "line1.mp3" + VER);
-  narr.preload = "auto"; narr.setAttribute("playsinline", "");
+  // ACT 1 lines play through the same audio player as Itachi's intro: one player only, so a phone
+  // never cuts one voice to start another
+  const narr = voice;
   let narrOK = true;
-  narr.addEventListener("error", () => { narrOK = false; });
+  ["line1", "line2", "line3", "line4", "line5", "line6"].forEach(n => { // warm the cache so each line starts at once
+    try { fetch(ACT1_DIR + n + ".mp3" + VER).catch(() => {}); } catch (_) {}
+  });
   const scene = $("scene"), scImg = $("sc-img"), scVid = $("sc-vid"), scPx = $("sc-px"), dateEl = $("date"), cut = $("cut");
   const IMGS = { portal: ACT1_DIR + "portal.jpg" + VER, battle: ACT1_DIR + "battle.jpg" + VER };
   Object.values(IMGS).forEach(src => { const im = new Image(); im.src = src; });
   scVid.src = ACT1_DIR + "villains.mp4" + VER;
-  scVid.volume = 0.5;
+  scVid.muted = true; scVid.defaultMuted = true; // the clip stays silent: the narration is the only voice
 
   let si = -1, sceneClock = 0, sceneWaitStart = 0, lineDone = false, dateDone = true, vidDone = true, dateTimer = 0;
 
@@ -297,8 +302,7 @@ body {
   }
 
   function unlockAct1Media() { // phones: media that will play later must first play inside a tap
-    try { narr.muted = true; const p = narr.play(); if (p && p.then) p.then(() => { narr.pause(); narr.muted = false; }).catch(() => { narr.muted = false; }); } catch (_) {}
-    try { scVid.muted = true; const p = scVid.play(); if (p && p.then) p.then(() => { scVid.pause(); scVid.currentTime = 0; scVid.muted = false; }).catch(() => { scVid.muted = false; }); } catch (_) {}
+    // nothing to do any more: the lines share Itachi's player and the clip plays muted
   }
 
   function blackCut(ms, mid) { // stepped fade to black, swap, fade back
@@ -353,9 +357,9 @@ body {
     }
     vidDone = sc.bg !== "video";
     if (sc.bg === "video") {
-      scVid.hidden = false; scVid.currentTime = 0; scVid.muted = false;
+      scVid.hidden = false; scVid.currentTime = 0; scVid.muted = true;
       const p = scVid.play();
-      if (p && p.catch) p.catch(() => { scVid.muted = true; scVid.play().catch(() => { pixelFreeze(); }); });
+      if (p && p.catch) p.catch(() => { pixelFreeze(); });
     }
     startLine(sc);
   }
@@ -375,7 +379,7 @@ body {
     lineDone = false;
     sceneClock = performance.now();
     if (narrOK) {
-      narr.src = ACT1_DIR + sc.clip + VER;
+      narr.src = ACT1_DIR + sc.clip + VER; narr.dataset.clip = sc.clip;
       const p = narr.play(); if (p && p.catch) p.catch(() => { narrOK = false; });
     }
     state = "act1";
@@ -425,9 +429,11 @@ body {
   }
 
   function sceneTime(sc) {
-    if (narrOK && !narr.paused && narr.currentTime > 0) return sc.clipAt + narr.currentTime;
+    // follow the voice itself; the clock only takes over if the voice never starts
+    const el = (performance.now() - sceneClock) / 1000;
     if (narrOK && narr.ended) return sc.seg[1] + 1;
-    return sc.seg[0] + (performance.now() - sceneClock) / 1000;
+    if (narrOK && el < narr.currentTime + 3) return sc.clipAt + narr.currentTime;
+    return sc.seg[0] + el;
   }
 
   function tickScene(now) {
@@ -541,9 +547,11 @@ body {
   let state = "idle", startClock = 0, waitStart = 0, shown = "";
 
   function storyTime() {
-    if (voiceOK && voice.currentTime > 0 && !voice.paused) return voice.currentTime;
-    if (voiceOK && voice.ended) return Math.max(voice.duration, (performance.now() - startClock) / 1000);
-    return (performance.now() - startClock) / 1000;
+    // the text follows the voice itself (no separate clock running ahead while the sound loads)
+    const el = (performance.now() - startClock) / 1000;
+    if (voiceOK && voice.ended) return Math.max(voice.duration, el);
+    if (voiceOK && el < voice.currentTime + 3) return voice.currentTime;
+    return el;
   }
 
   function render(t) {
@@ -571,7 +579,8 @@ body {
   }
 
   function tryStart(fromTap) {
-    if (fromTap) { try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {} unlockAct1Media(); }
+    if (fromTap) { try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {} }
+    if (voice.dataset.clip !== "intro") { voice.src = introSrc; voice.dataset.clip = "intro"; } // back from ACT 1 on replay
     voice.currentTime = 0;
     const p = voice.play();
     if (p && p.then) {
