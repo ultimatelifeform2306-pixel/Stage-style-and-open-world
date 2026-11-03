@@ -235,7 +235,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103h";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261103i";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -531,10 +531,9 @@ body {
   ];
   const TYPE_CPS = 17;
 
-  // ===== ACT II: the dramatic sound builds over the frozen picture, the screen cuts to black
-  // in its silence, and the title slams in on the hit =====
+  // ===== ACT II: the screen cuts to black, then the title slams in on the bell's strike =====
   const ACT2_DIR = VOICE_DIR + "act2/";
-  const A2 = { pauseAfterLine: 1.2, blackAt: 4.52, hitAt: 5.71, dateAfterHit: 1.3, date: "24 AUGUST 2026 - 25 SEPTEMBER 2026" };
+  const A2 = { pauseAfterLine: 1.2, blackAt: 0, hitAt: 0.64, dateAfterHit: 1.4, date: "24 AUGUST 2026 - 25 SEPTEMBER 2026" };
   let frozenAt = 0, a2Start = 0, a2Black = false, a2Hit = false, a2DateStarted = false, stingOK = true;
   function stingFailed(e) { if (e && e.name === "AbortError") return; stingOK = false; }
 
