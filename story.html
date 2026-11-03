@@ -135,7 +135,32 @@ body {
 #sc-img.view { transition: transform 1.3s ease-in-out, filter 1.3s ease-in-out; }
 #sc-img.view.slow { transition: transform 6.5s ease-in-out, filter 6.5s ease-in-out; }
 
+/* ---- ACT II card ---- */
+#act2 {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3.2cqw;
+  background: var(--void);
+}
+#a2-title { margin: 0; font-weight: 400; display: flex; flex-direction: column; align-items: center; gap: 2.2cqw; opacity: 0; }
+#a2-title .big { font-size: 9cqw; color: var(--flame); letter-spacing: 0.12em; text-shadow: 0.7cqw 0.7cqw 0 var(--ember); }
+#a2-title .rule { width: 40cqw; height: 0.6cqw; background: var(--flame); box-shadow: 0 0.6cqw 0 var(--ember); }
+#a2-title .name { font-size: 3.2cqw; color: var(--flame); letter-spacing: 0.1em; text-shadow: 0.35cqw 0.35cqw 0 var(--ember); }
+#a2-title.slam { opacity: 1; animation: slam 280ms steps(5) both, creep 7s linear 280ms forwards; }
+@keyframes slam { from { transform: scale(2.8); } to { transform: scale(1); } }
+@keyframes creep { from { transform: scale(1); } to { transform: scale(1.06); } }
+#act2.flash { animation: red-flash 360ms steps(3) 1; }
+@keyframes red-flash { 0% { background: #5a0a04; } 100% { background: var(--void); } }
+#stage.quake { animation: quake 420ms steps(6) 1; }
+@keyframes quake {
+  0% { transform: translate(1.2%, -0.8%); } 25% { transform: translate(-1%, 0.9%); }
+  50% { transform: translate(0.8%, 0.6%); } 75% { transform: translate(-0.5%, -0.4%); } 100% { transform: none; }
+}
+#a2-date { font-size: 2.6cqw; color: var(--flame); letter-spacing: 0.06em; text-shadow: 0.3cqw 0.3cqw 0 var(--ember); min-height: 1.2em; }
+#a2-date.caret::after { content: "_"; animation: blink 0.6s steps(2) infinite; }
+
 @media (prefers-reduced-motion: reduce) {
+  #a2-title.slam, #act2.flash, #stage.quake { animation: none; }
   #sc-img.shake, #sc-img.pan, #sub.waiting { animation: none; }
   #start, #prompt span, #act-title .ch.in { animation: none; }
   #act-title .ch.in { opacity: 1; }
@@ -152,6 +177,14 @@ body {
     <div id="date" aria-live="polite"></div>
   </div>
   <div id="cut"></div>
+  <div id="act2" hidden>
+    <h2 id="a2-title" aria-label="Act II — The Last Period">
+      <span class="big" aria-hidden="true">ACT II</span>
+      <span class="rule" aria-hidden="true"></span>
+      <span class="name" aria-hidden="true">THE LAST PERIOD</span>
+    </h2>
+    <div id="a2-date" aria-live="polite"></div>
+  </div>
   <p id="sub" aria-live="polite"></p>
   <div id="start" class="hint" hidden>&#9654; TAP TO START</div>
   <div id="prompt" class="hint" hidden>
@@ -202,7 +235,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103g";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261103h";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -496,7 +529,56 @@ body {
     { at: 31.00, dur: 0.78, text: "Back then," },
     { at: 32.07, dur: 1.01, text: "he believed her.", add: true, last: true },
   ];
-  const TYPE_CPS = 17;   // letters per second for the subtitles in this scene
+  const TYPE_CPS = 17;
+
+  // ===== ACT II: the dramatic sound builds over the frozen picture, the screen cuts to black
+  // in its silence, and the title slams in on the hit =====
+  const ACT2_DIR = VOICE_DIR + "act2/";
+  const A2 = { pauseAfterLine: 1.2, blackAt: 4.52, hitAt: 5.71, dateAfterHit: 1.3, date: "24 AUGUST 2026 - 25 SEPTEMBER 2026" };
+  let frozenAt = 0, a2Start = 0, a2Black = false, a2Hit = false, a2DateStarted = false, stingOK = true;
+  function stingFailed(e) { if (e && e.name === "AbortError") return; stingOK = false; }
+
+  function startAct2() {
+    state = "act2";
+    stingOK = true;
+    voice.src = ACT2_DIR + "sting.mp3" + VER; voice.dataset.clip = "sting";
+    const p = voice.play(); if (p && p.catch) p.catch(stingFailed);
+    a2Start = performance.now(); a2Black = a2Hit = a2DateStarted = false;
+  }
+
+  function stingTime(now) { // follow the sound so the cut and the hit land on it
+    const el = (now - a2Start) / 1000;
+    if (stingOK && voice.dataset.clip === "sting" && !voice.ended && el < voice.currentTime + 3) return voice.currentTime;
+    return el;
+  }
+
+  function tickAct2(now) {
+    const t = stingTime(now);
+    if (!a2Black && t >= A2.blackAt) { // suddenly: black
+      a2Black = true;
+      scene.hidden = true; sub.innerHTML = ""; shown = "";
+      $("act2").hidden = false;
+    }
+    if (!a2Hit && t >= A2.hitAt) { // the hit: title slams in, the screen shakes
+      a2Hit = true;
+      $("a2-title").classList.add("slam");
+      $("act2").classList.add("flash");
+      stage.classList.remove("quake"); void stage.offsetWidth; stage.classList.add("quake");
+      try { navigator.vibrate && navigator.vibrate([120, 40, 220]); } catch (_) {}
+    }
+    if (a2Hit && !a2DateStarted && t >= A2.hitAt + A2.dateAfterHit) {
+      a2DateStarted = true;
+      const el = $("a2-date"), text = A2.date;
+      let i = 0;
+      el.classList.add("caret");
+      const timer = setInterval(() => {
+        i++;
+        el.textContent = text.slice(0, i);
+        if (text[i - 1] && text[i - 1] !== " ") keyClick();
+        if (i >= text.length) { clearInterval(timer); setTimeout(() => el.classList.remove("caret"), 900); state = "end"; }
+      }, 85);
+    }
+  }   // letters per second for the subtitles in this scene
   let fStart = 0, fCue = -1, fBase = "", fLine = "", fLineAt = 0, fLineDur = 0, fEndedAt = 0;
 
   function showPic(name) {
@@ -556,7 +638,7 @@ body {
       const n = Math.min(fLine.length, Math.floor(fLine.length * Math.max(0, (t - fLineAt) / fLineDur)));
       const html = esc(fBase + fLine.slice(0, n));
       if (html !== shown) { shown = html; sub.innerHTML = html; }
-      if (fCue === FRIENDS.length - 1 && n >= fLine.length) state = "frozen"; // the story stops here
+      if (fCue === FRIENDS.length - 1 && n >= fLine.length) { state = "frozen"; frozenAt = now; } // a beat, then ACT II
     }
   }
 
@@ -675,6 +757,8 @@ body {
       if (left <= 0) goToAct();
     } else if (state === "act1") tickScene(now);
     else if (state === "friends") tickFriends(now);
+    else if (state === "frozen" && now - frozenAt >= A2.pauseAfterLine * 1000) startAct2();
+    else if (state === "act2") tickAct2(now);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
