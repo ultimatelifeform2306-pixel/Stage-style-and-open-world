@@ -202,7 +202,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103e";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261103f";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -474,7 +474,6 @@ body {
   };
   // at: seconds from the start of the fade in. add: the text goes on the same line as the one before it
   // at = when it is said in friends.mp3 (seconds from the start of the fade in), dur = how long it is said;
-  // lines with no dur have no recording yet and type on their own
   const FRIENDS = [
     { at: 3.00,  dur: 1.32, pic: "friends", view: "full", text: "They were all there." },
     { at: 4.92,  dur: 0.90, text: "His friends…" },
@@ -489,9 +488,11 @@ body {
     { at: 14.60, view: "her" },
     { at: 19.50, dur: 0.58, text: "…her." },
     { at: 21.00, dur: 1.01, text: "His girlfriend." },
-    { at: 23.40, text: "The one who wouldn't let go of him." },
-    { at: 26.20, text: "Her arms wrapped around him, holding on like she would never leave." },
-    { at: 31.00, text: "Back then, he believed her.", last: true },
+    { at: 23.40, dur: 1.99, text: "The one who wouldn't let go of him." },
+    { at: 26.20, dur: 1.73, text: "Her arms wrapped around him," },
+    { at: 28.27, dur: 2.15, text: "holding on like she would never leave.", add: true },
+    { at: 31.00, dur: 0.78, text: "Back then," },
+    { at: 32.07, dur: 1.01, text: "he believed her.", add: true, last: true },
   ];
   const TYPE_CPS = 17;   // letters per second for the subtitles in this scene
   let fStart = 0, fCue = -1, fBase = "", fLine = "", fLineAt = 0, fLineDur = 0, fEndedAt = 0;
