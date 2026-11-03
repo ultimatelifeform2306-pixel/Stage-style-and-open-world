@@ -157,9 +157,9 @@ body {
     { t0: 5.19, t1: 6.29, text: "prepare to see the...." },
     { t0: 6.72, t1: 8.06, text: "Fate of a young boy...." },
     // "Mister" is spoken; the profile name types right after it
-    { t0: 8.50, t1: 9.09 + NAME.length * 0.07, text: "Mister " + NAME, name: NAME },
+    { t0: 8.50, t1: 9.12 + Math.max(0.5, NAME.length * 0.08), text: "Mister " + NAME, name: NAME },
   ];
-  const STORY_END = LINES[4].t1 + 0.3;
+  const STORY_END = LINES[4].t1 + 0.9;
   const AUTO_WAIT = 10;
 
   const $ = (id) => document.getElementById(id);
@@ -192,6 +192,35 @@ body {
     o.start(t); o.stop(t + dur + 0.02);
   }
 
+  // ---- the voice says the player's name right after "Mister" ----
+  // The recording can't know every username, so the browser's own speech engine says it,
+  // with the deepest English male voice it has, slowed and pitched down to sit under Itachi.
+  const synth = window.speechSynthesis || null;
+  let nameVoice = null, nameSaid = false;
+  function pickVoice() {
+    if (!synth) return;
+    const vs = synth.getVoices().filter(v => /^en/i.test(v.lang));
+    const male = /(daniel|arthur|aaron|alex|fred|rishi|oliver|george|james|guy|male|david|mark|ryan|thomas)/i;
+    nameVoice = vs.find(v => male.test(v.name) && /GB|UK/i.test(v.lang + v.name)) || vs.find(v => male.test(v.name)) || vs[0] || null;
+  }
+  if (synth) { pickVoice(); synth.addEventListener && synth.addEventListener("voiceschanged", pickVoice); }
+  function unlockSpeech() { // phones only let speech start from a tap: say nothing once, inside it
+    if (!synth) return;
+    try { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u); } catch (_) {}
+  }
+  function sayName() {
+    if (nameSaid || !synth) return;
+    nameSaid = true;
+    try {
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(NAME);
+      if (nameVoice) { u.voice = nameVoice; u.lang = nameVoice.lang; } else u.lang = "en-GB";
+      u.rate = 0.82; u.pitch = 0.45; u.volume = 1;
+      synth.speak(u);
+    } catch (_) {}
+  }
+  const NAME_AT = 9.12; // "Mister" ends here in the recording
+
   // states: idle (waiting for a tap) -> story -> wait -> fading -> act
   let state = "idle", startClock = 0, waitStart = 0, shown = "";
 
@@ -222,10 +251,12 @@ body {
     startEl.hidden = true;
     state = "story";
     shown = ""; sub.innerHTML = "";
+    nameSaid = false;
     startClock = performance.now();
   }
 
   function tryStart(fromTap) {
+    if (fromTap) unlockSpeech();
     voice.currentTime = 0;
     const p = voice.play();
     if (p && p.then) {
@@ -241,6 +272,7 @@ body {
   function goToAct() {
     state = "fading";
     voice.pause();
+    if (synth) synth.cancel();
     prompt.hidden = true;
     fade.classList.remove("on"); void fade.offsetWidth; fade.classList.add("on");
     setTimeout(showAct, reduce ? 50 : 1000);
@@ -292,6 +324,7 @@ body {
     if (state === "story") {
       const t = storyTime();
       render(t);
+      if (t >= NAME_AT) sayName();
       if (t >= STORY_END) { render(99); enterWait(); }
     } else if (state === "wait") {
       const left = Math.max(0, 1 - (now - waitStart) / 1000 / AUTO_WAIT);
@@ -302,8 +335,8 @@ body {
   }
   requestAnimationFrame(frame);
 
-  // Opened from the site's button the tap usually allows sound right away; otherwise ask for a tap.
-  tryStart(false);
+  // One tap starts it: phones need it for both the recording and the spoken name.
+  startEl.hidden = false;
 })();
 </script>
 </body>
