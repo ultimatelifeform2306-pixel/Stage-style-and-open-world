@@ -168,11 +168,22 @@ body {
   const fade = $("fade"), act = $("act");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const voice = new Audio("art/itachi_intro.mp3");
+  const VOICE_DIR = "art/";
+  const voice = new Audio(VOICE_DIR + "itachi_intro.mp3");
   voice.preload = "auto";
   voice.setAttribute("playsinline", "");
   let voiceOK = true;
   voice.addEventListener("error", () => { voiceOK = false; });
+
+  // Names with their own recording: Itachi's line with the name already spoken after "Mister".
+  // It plays like any audio file, so the iPhone can't block it. Other names use the speech engine.
+  const slug = NAME.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  let bakedName = false;
+  if (slug) {
+    fetch(VOICE_DIR + "voices/" + slug + ".mp3", { method: "HEAD" }).then(r => {
+      if (r.ok && state === "idle") { voice.src = VOICE_DIR + "voices/" + slug + ".mp3"; voice.load(); bakedName = true; }
+    }).catch(() => {});
+  }
 
   // ---- 16-bit sound chip ----
   let ac = null;
@@ -217,7 +228,7 @@ body {
     } catch (_) {}
   }
   function sayName() {
-    if (nameSaid || !synth) return;
+    if (nameSaid || bakedName || !synth) return;
     nameSaid = true;
     try {
       if (synth.paused) synth.resume();
