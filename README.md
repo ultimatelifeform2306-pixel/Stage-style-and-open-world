@@ -26,4 +26,4 @@ python quay_kings.py
 
 # Prologue demo story (16-bit)
 
-Open `story.html` in a browser. On a black 16:9 screen, Itachi's voice line (`art/itachi_intro.mp3`) plays with movie-style subtitles typed in sync at the bottom. The last line is "Mister <name>", and the browser's speech engine says the name aloud right after the recorded "Mister". The name comes from `?name=` in the URL, or from the signed-in V-Devil profile. Click to continue or wait 10 seconds for **ACT 1**. The V-Devil site's Panel Sewi game panel opens it with its **SEE THE DEMO STORY** button.
+Open `story.html` in a browser. On a black 16:9 screen, Itachi's voice line (`art/itachi_intro.mp3`) plays with movie-style subtitles typed in sync at the bottom. The last line is "Mister <name>". Names with an Itachi recording in `art/voices/<name>.mp3` are heard in his voice; other names show in the subtitle only. The name comes from `?name=` in the URL, or from the signed-in V-Devil profile. Click to continue or wait 10 seconds for **ACT 1**. The V-Devil site's Panel Sewi game panel opens it with its **SEE THE DEMO STORY** button.
