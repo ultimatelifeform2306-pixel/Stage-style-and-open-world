@@ -204,22 +204,32 @@ body {
     nameVoice = vs.find(v => male.test(v.name) && /GB|UK/i.test(v.lang + v.name)) || vs.find(v => male.test(v.name)) || vs[0] || null;
   }
   if (synth) { pickVoice(); synth.addEventListener && synth.addEventListener("voiceschanged", pickVoice); }
-  function unlockSpeech() { // phones only let speech start from a tap: say nothing once, inside it
+  function unlockSpeech() { // phones only let speech start from a tap: speak once, quietly, inside it
+    // iPhone: let sound play even with the silent switch on (Safari 16.4+)
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}
     if (!synth) return;
-    try { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u); } catch (_) {}
+    try {
+      pickVoice();
+      const u = new SpeechSynthesisUtterance("ok");
+      u.volume = 0.01; u.rate = 2;
+      if (nameVoice) u.voice = nameVoice;
+      synth.speak(u);
+    } catch (_) {}
   }
   function sayName() {
     if (nameSaid || !synth) return;
     nameSaid = true;
     try {
-      synth.cancel();
+      if (synth.paused) synth.resume();
       const u = new SpeechSynthesisUtterance(NAME);
       if (nameVoice) { u.voice = nameVoice; u.lang = nameVoice.lang; } else u.lang = "en-GB";
       u.rate = 0.82; u.pitch = 0.45; u.volume = 1;
       synth.speak(u);
+      // Chrome on Android sometimes leaves the queue paused: nudge it
+      setTimeout(() => { try { if (synth.paused) synth.resume(); } catch (_) {} }, 250);
     } catch (_) {}
   }
-  const NAME_AT = 9.12; // "Mister" ends here in the recording
+  const NAME_AT = 8.95; // a little before "Mister" ends: the speech engine takes a moment to start // "Mister" ends here in the recording
 
   // states: idle (waiting for a tap) -> story -> wait -> fading -> act
   let state = "idle", startClock = 0, waitStart = 0, shown = "";
