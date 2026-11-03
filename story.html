@@ -235,7 +235,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103i";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261103j";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -756,7 +756,12 @@ body {
       if (left <= 0) goToAct();
     } else if (state === "act1") tickScene(now);
     else if (state === "friends") tickFriends(now);
-    else if (state === "frozen" && now - frozenAt >= A2.pauseAfterLine * 1000) startAct2();
+    // the screen goes black the moment the friends track (voices + build-up) ends;
+    // without sound, a short beat after the last line instead
+    else if (state === "frozen" && (
+      (narrOK && voice.dataset.clip === "friends" && voice.ended) ||
+      ((!narrOK || voice.dataset.clip !== "friends") && now - frozenAt >= A2.pauseAfterLine * 1000) ||
+      now - frozenAt >= 4000)) startAct2();
     else if (state === "act2") tickAct2(now);
     requestAnimationFrame(frame);
   }
