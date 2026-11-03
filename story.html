@@ -106,8 +106,6 @@ body {
 @keyframes drop { from { opacity: 1; transform: translateY(-3cqw); } to { opacity: 1; transform: none; } }
 #act-rule { height: 0.6cqw; width: 0; background: var(--flame); box-shadow: 0 0.6cqw 0 var(--ember); transition: width 700ms steps(14); }
 #act-rule.in { width: 40cqw; }
-#replay { position: static; opacity: 0; transition: opacity 400ms steps(3); }
-#replay.in { opacity: 1; }
 
 /* ---- ACT 1 scenes ---- */
 #scene { position: absolute; inset: 0; background: var(--void); overflow: hidden; }
@@ -134,7 +132,8 @@ body {
 #sub.waiting { animation: tap-me 1.4s steps(3) infinite; }
 @keyframes tap-me { 50% { opacity: 0.45; } }
 #cut { position: absolute; inset: 0; background: var(--void); opacity: 0; pointer-events: none; }
-#end-title { margin: 0; font-size: 4cqw; font-weight: 400; color: var(--gold); text-shadow: 0.5cqw 0.5cqw 0 var(--ember); }
+#sc-img.view { transition: transform 1.3s ease-in-out, filter 1.3s ease-in-out; }
+#sc-img.view.slow { transition: transform 6.5s ease-in-out, filter 6.5s ease-in-out; }
 
 @media (prefers-reduced-motion: reduce) {
   #sc-img.shake, #sc-img.pan, #sub.waiting { animation: none; }
@@ -163,10 +162,6 @@ body {
   <div id="act" hidden>
     <h2 id="act-title" aria-label="Act 1"></h2>
     <div id="act-rule"></div>
-  </div>
-  <div id="end" hidden style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3cqw;background:var(--void)">
-    <h2 id="end-title">TO BE CONTINUED</h2>
-    <div id="replay" class="hint">CLICK TO REPLAY</div>
   </div>
 </div>
 
@@ -207,7 +202,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103b";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261103c";   // new number on each update so phones don't keep an old copy
   const voice = new Audio(VOICE_DIR + "itachi_intro.mp3" + VER);
   voice.preload = "auto";
   voice.setAttribute("playsinline", "");
@@ -458,15 +453,88 @@ body {
     }
   }
 
-  function endDemo() {
-    state = "end";
-    blackCut(900, () => {
-      scene.hidden = true; scVid.pause();
-      sub.innerHTML = ""; shown = "";
-      $("end").hidden = false;
-      beep(659, 0.2, "triangle", 0.06); beep(523, 0.4, "triangle", 0.06, 0.2);
-      setTimeout(() => $("replay").classList.add("in"), 2500);
-    });
+  // ===== After "relief.": the friends. One continuous scene, no taps, freezes on the last line =====
+  const PICS = {
+    friends: ACT1_DIR + "friends.jpg" + VER, sonic: ACT1_DIR + "sonic.jpg" + VER, shadow: ACT1_DIR + "shadow.jpg" + VER,
+    silver: ACT1_DIR + "silver.jpg" + VER, goku: ACT1_DIR + "goku.jpg" + VER,
+  };
+  Object.values(PICS).forEach(src => { const im = new Image(); im.src = src; });
+  // where to look in friends.jpg (% of the picture) and how close; bw = how black and white
+  const VIEWS = {
+    full:  { x: 50, y: 50, z: 1 },
+    chun:  { x: 76, y: 42, z: 1.7 },
+    kenos: { x: 35, y: 42, z: 1.7 },
+    her:   { x: 24, y: 40, z: 2.7, bw: 1, slow: true },
+  };
+  // at: seconds from the start of the fade in. add: the text goes on the same line as the one before it
+  const FRIENDS = [
+    { at: 3.0,  pic: "friends", view: "full", text: "They were all there." },
+    { at: 5.6,  text: "His friends…" },
+    { at: 7.6,  pic: "sonic",  text: "Sonic…" },
+    { at: 8.7,  pic: "shadow", text: "Shadow…", add: true },
+    { at: 9.8,  pic: "silver", text: "Silver…", add: true },
+    { at: 10.9, pic: "goku",   text: "Black Goku…", add: true },
+    { at: 12.2, pic: "friends", view: "chun", text: "Chun-Li…" },
+    { at: 13.6, view: "kenos", text: "Kenos…", add: true },
+    { at: 15.0, view: "full", text: "Everyone" },
+    { at: 16.8, text: "And…" },
+    { at: 18.2, view: "her" },
+    { at: 21.6, text: "…her." },
+    { at: 23.6, text: "His girlfriend." },
+    { at: 25.6, text: "The one who wouldn't let go of him." },
+    { at: 28.4, text: "Her arms wrapped around him, holding on like she would never leave." },
+    { at: 33.2, text: "Back then, he believed her.", last: true },
+  ];
+  const TYPE_CPS = 17;   // letters per second for the subtitles in this scene
+  let fStart = 0, fCue = -1, fBase = "", fLine = "", fLineAt = 0;
+
+  function showPic(name) {
+    scImg.className = "";
+    scImg.style.transition = ""; scImg.style.opacity = "1";
+    scImg.style.transform = ""; scImg.style.filter = "";
+    scImg.src = PICS[name]; scImg.hidden = false;
+  }
+  function setView(name) {
+    const v = VIEWS[name];
+    const clamp = (p) => Math.max(50 / v.z, Math.min(100 - 50 / v.z, p)); // never show past the picture's edge
+    scImg.className = "view" + (v.slow ? " slow" : "");
+    void scImg.offsetWidth;
+    scImg.style.transform = "scale(" + v.z + ") translate(" + (50 - clamp(v.x)) + "%, " + (50 - clamp(v.y)) + "%)";
+    scImg.style.filter = v.bw ? "grayscale(" + v.bw + ") contrast(1.15)" : "grayscale(0)";
+  }
+
+  function endDemo() { // after the last ACT 1 line: fade in to the friends picture and run on its own
+    state = "friends";
+    scVid.pause();
+    sub.classList.remove("waiting");
+    sub.innerHTML = ""; shown = "";
+    dateEl.textContent = "";
+    showPic("friends");
+    scImg.style.opacity = "0";
+    void scImg.offsetWidth;
+    scImg.style.transition = "opacity 3s linear";
+    scImg.style.opacity = "1";
+    fStart = performance.now(); fCue = -1; fBase = ""; fLine = ""; fLineAt = 0;
+  }
+
+  function tickFriends(now) {
+    const t = (now - fStart) / 1000;
+    while (fCue + 1 < FRIENDS.length && t >= FRIENDS[fCue + 1].at) {
+      const c = FRIENDS[++fCue];
+      if (c.pic && !(c.pic === "friends" && fCue === 0)) showPic(c.pic);
+      if (c.view) setView(c.view);
+      if (c.text) {
+        fBase = c.add ? (fBase + (fLine ? fLine + " " : "")) : "";
+        if (!c.add) fBase = "";
+        fLine = c.text; fLineAt = c.at;
+      }
+    }
+    if (fLine) {
+      const n = Math.min(fLine.length, Math.floor((t - fLineAt) * TYPE_CPS));
+      const html = esc(fBase + fLine.slice(0, n));
+      if (html !== shown) { shown = html; sub.innerHTML = html; }
+      if (fCue === FRIENDS.length - 1 && n >= fLine.length) state = "frozen"; // the story stops here
+    }
   }
 
   // states: idle (waiting for a tap) -> story -> wait -> fading -> act -> act1 scenes -> end
@@ -550,9 +618,7 @@ body {
 
   function replay() {
     act.hidden = true;
-    $("end").hidden = true;
     $("act-rule").classList.remove("in");
-    $("replay").classList.remove("in");
     fade.classList.remove("on");
     voiceOK = true;
     tryStart(true);
@@ -565,7 +631,7 @@ body {
     else if (state === "act" && performance.now() >= actReadyAt) startAct1();
     else if (state === "act1") nextScene();
     else if (state === "act1-fade") popScene(SCENES[si]);
-    else if (state === "end" && $("replay").classList.contains("in")) replay();
+
   }
   stage.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
   addEventListener("keydown", (e) => {
@@ -582,6 +648,7 @@ body {
       timerFill.style.width = (Math.ceil(left * 20) * 5) + "%";
       if (left <= 0) goToAct();
     } else if (state === "act1") tickScene(now);
+    else if (state === "friends") tickFriends(now);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
