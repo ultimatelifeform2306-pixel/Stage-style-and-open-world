@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flamboyant Prologue</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<style>
+/* Layout: one 16:9 "TV" stage centred on black. Pixel canvas behind, SNES dialog window on top
+   (the road and the boy stay visible below it), full-screen overlays for title and ACT 1. */
+:root {
+  --void: #000000;          /* letterbox + ACT screen */
+  --window: #10184a;        /* SNES dialog window */
+  --window-2: #1d2a78;
+  --frame: #f4f1ff;         /* window border + text */
+  --frame-shadow: #5a63a8;
+  --flame: #e8301c;         /* flamboyant red */
+  --gold: #ffd25a;          /* ACT title */
+  --ember: #8a1408;
+  --font-pixel: "Press Start 2P", "Courier New", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--frame);
+  font-family: var(--font-pixel);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage {
+  position: relative;
+  width: min(100%, calc((100dvh - 24px) * 16 / 9));
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  background: var(--void);
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+  box-shadow: 0 0 0 2px #111;
+}
+#stage:focus-visible { box-shadow: 0 0 0 3px var(--gold); }
+#world {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ---- dialog window ---- */
+#dialog {
+  position: absolute;
+  left: 4%; right: 4%; top: 5%;
+  min-height: 31%;
+  display: flex;
+  gap: 2.4cqw;
+  padding: 2cqw 2.4cqw;
+  background: linear-gradient(180deg, var(--window-2), var(--window) 70%);
+  border: 0.55cqw solid var(--frame);
+  border-radius: 0.9cqw;
+  box-shadow:
+    0 0 0 0.35cqw var(--frame-shadow),
+    inset 0 0 0 0.35cqw #0a0f30,
+    0.8cqw 0.8cqw 0 0.35cqw rgba(0,0,0,.55);
+  transform-origin: 50% 0;
+}
+#dialog.open { animation: window-open 280ms steps(5) both; }
+@keyframes window-open { from { transform: scaleY(0.05); } to { transform: scaleY(1); } }
+#portrait-wrap {
+  flex: none;
+  display: flex; flex-direction: column; align-items: center; gap: 1cqw;
+}
+#portrait {
+  width: 10.5cqw; height: 10.5cqw;
+  image-rendering: pixelated;
+  border: 0.4cqw solid var(--frame);
+  background: #050816;
+}
+#name {
+  font-size: 1.5cqw;
+  letter-spacing: 0.15em;
+  color: var(--flame);
+  text-shadow: 0.2cqw 0.2cqw 0 #000;
+}
+#text {
+  flex: 1; min-width: 0;
+  margin: 0;
+  font-size: 2.05cqw;
+  line-height: 1.85;
+  text-shadow: 0.22cqw 0.22cqw 0 #000;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+#next {
+  position: absolute; right: 2.2cqw; bottom: 1.4cqw;
+  font-size: 1.6cqw; color: var(--gold);
+  animation: bob 600ms steps(2) infinite;
+}
+@keyframes bob { 50% { transform: translateY(0.5cqw); } }
+
+/* ---- continue prompt ---- */
+#prompt {
+  position: absolute; left: 0; right: 0; bottom: 5%;
+  display: flex; flex-direction: column; align-items: center; gap: 1.2cqw;
+  font-size: 1.6cqw;
+  text-shadow: 0.25cqw 0.25cqw 0 #000;
+}
+#prompt span { animation: blink 1s steps(2) infinite; }
+#timer {
+  width: 22cqw; height: 1.1cqw;
+  border: 0.3cqw solid var(--frame);
+  background: #000;
+  box-shadow: 0.3cqw 0.3cqw 0 #000;
+}
+#timer-fill { height: 100%; width: 100%; background: var(--flame); }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---- full-screen layers ---- */
+.layer {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+}
+#title { background: rgba(0, 0, 10, .45); gap: 3cqw; }
+#title h1 {
+  margin: 0;
+  font-size: 5cqw;
+  font-weight: 400;
+  color: var(--gold);
+  text-shadow: 0.5cqw 0.5cqw 0 var(--ember), 0.9cqw 0.9cqw 0 #000;
+  letter-spacing: 0.08em;
+}
+#title p { margin: 0; font-size: 1.5cqw; text-shadow: 0.25cqw 0.25cqw 0 #000; }
+#title .start { animation: blink 1s steps(2) infinite; font-size: 1.9cqw; }
+
+#fade {
+  background: var(--void);
+  opacity: 0;
+  pointer-events: none;
+}
+#fade.on { animation: fade-out 900ms steps(5) forwards; }
+@keyframes fade-out { to { opacity: 1; } }
+
+#act { background: var(--void); gap: 3.5cqw; }
+#act-title {
+  margin: 0;
+  font-size: 9cqw;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 0.12em;
+  text-shadow: 0.7cqw 0.7cqw 0 var(--ember);
+  display: flex; gap: 0;
+}
+#act-title .ch { display: inline-block; min-width: 0.6em; opacity: 0; }
+#act-title .ch.in { animation: drop 360ms steps(4) forwards; }
+@keyframes drop { from { opacity: 1; transform: translateY(-3cqw); } to { opacity: 1; transform: none; } }
+#act-rule {
+  height: 0.6cqw; width: 0;
+  background: var(--flame);
+  box-shadow: 0 0.6cqw 0 var(--ember);
+  transition: width 700ms steps(14);
+}
+#act-rule.in { width: 40cqw; }
+#replay { font-size: 1.3cqw; color: #8b8fb8; opacity: 0; transition: opacity 400ms steps(3); }
+#replay.in { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  #dialog.open, #next, #prompt span, #title .start, #act-title .ch.in { animation: none; }
+  #act-title .ch.in { opacity: 1; }
+  #fade.on { animation-duration: 1ms; }
+}
+</style>
+</head>
+<body>
+<div id="stage" tabindex="0" role="application" aria-label="Story scene. Click or press Space to continue.">
+  <canvas id="world" width="640" height="360"></canvas>
+
+  <div id="dialog" hidden>
+    <div id="portrait-wrap">
+      <canvas id="portrait" width="16" height="16"></canvas>
+      <div id="name">ITACHI</div>
+    </div>
+    <p id="text" aria-live="polite"></p>
+    <div id="next" hidden>&#9660;</div>
+  </div>
+
+  <div id="prompt" hidden>
+    <span>CLICK TO CONTINUE</span>
+    <div id="timer"><div id="timer-fill"></div></div>
+  </div>
+
+  <div id="title" class="layer">
+    <h1>PROLOGUE</h1>
+    <p>LA ROUTE DES FLAMBOYANTS</p>
+    <p class="start">&#9654; CLICK TO START</p>
+  </div>
+
+  <div id="fade" class="layer"></div>
+
+  <div id="act" class="layer" hidden>
+    <h2 id="act-title" aria-label="Act 1"></h2>
+    <div id="act-rule"></div>
+    <div id="replay">CLICK TO REPLAY</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // Voice line timings (seconds), measured from the pauses in the Itachi recording.
+  const LINES = [
+    { page: 0, t0: 0.47, t1: 2.19, text: "You passed the test great......" },
+    { page: 0, t0: 2.41, t1: 4.79, text: "You now into the new story Of this game" },
+    { page: 1, t0: 5.19, t1: 6.29, text: "prepare to see the...." },
+    { page: 1, t0: 6.72, t1: 8.06, text: "Fate of a young boy...." },
+    { page: 1, t0: 8.50, t1: 9.09, text: "Mister" },
+  ];
+  const STORY_END = 9.35;   // last syllable has landed
+  const AUTO_WAIT = 10;     // seconds before the story moves on by itself
+
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage"), world = $("world"), ctx = world.getContext("2d");
+  const dialog = $("dialog"), textEl = $("text"), nextEl = $("next");
+  const prompt = $("prompt"), timerFill = $("timer-fill");
+  const titleEl = $("title"), fade = $("fade"), act = $("act");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  ctx.imageSmoothingEnabled = false;
+
+  // ---------- assets ----------
+  const bg = new Image();
+  bg.src = "art/route_des_flamboyants.png";
+  const voice = new Audio("art/itachi_intro.mp3");
+  voice.preload = "auto";
+  let voiceOK = true;
+  voice.addEventListener("error", () => { voiceOK = false; });
+
+  // ---------- 16-bit sound chip ----------
+  let ac = null;
+  function chip() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    if (ac && ac.state === "suspended") ac.resume();
+    return ac;
+  }
+  function beep(freq, dur, type = "square", vol = 0.04, when = 0) {
+    const a = chip(); if (!a) return;
+    const t = a.currentTime + when;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  const blip = () => beep(880 + Math.random() * 60, 0.03, "square", 0.018);
+
+  // ---------- Itachi portrait, 16x16 ----------
+  const FACE = [
+    "................",
+    "....kkkkkkkk....",
+    "..kkkkkkkkkkkk..",
+    ".kkkkkkkkkkkkkk.",
+    ".kkkkskkkkskkkk.",
+    ".kk" + "ssssssssss" + "kk.",
+    ".kksKKssssKKskk.",
+    ".kksrrSssSrrskk.",
+    ".kk" + "ssssssssss" + "kk.",
+    ".kk" + "sssssSssss" + "kk.",
+    "..k" + "ssssssssss" + "k..",
+    "..k" + "SsssmmsssS" + "k..",
+    "...." + "SssssssS" + "....",
+    "..cc" + "CCssssCC" + "cc..",
+    ".ccc" + "CCCCCCCC" + "ccc.",
+    "cccc" + "cccccccc" + "cccc",
+  ];
+  const PAL = { k: "#15131c", s: "#e9c6a2", S: "#b88d6e", K: "#2a1f24", r: "#e0182d",
+                m: "#8a5a4a", c: "#1e1f3a", C: "#3a3c66" };
+  (function drawPortrait() {
+    const p = $("portrait").getContext("2d");
+    FACE.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (PAL[ch]) { p.fillStyle = PAL[ch]; p.fillRect(x, y, 1, 1); }
+    }));
+  })();
+
+  // ---------- falling flamboyant petals ----------
+  const REDS = ["#ff3b22", "#d91f12", "#ff6a3d", "#b8140c"];
+  const petals = [];
+  function spawnPetal(anyY) {
+    petals.push({
+      x: Math.random() * 700,
+      y: anyY ? Math.random() * 360 : -10 - Math.random() * 40,
+      vy: 10 + Math.random() * 14,
+      vx: -6 - Math.random() * 10,
+      ph: Math.random() * 6.28,
+      c: REDS[(Math.random() * REDS.length) | 0],
+      s: Math.random() < 0.3 ? 3 : 2,
+    });
+  }
+  for (let i = 0; i < (reduce ? 10 : 46); i++) spawnPetal(true);
+
+  // ---------- state ----------
+  // title -> story -> wait -> fading -> act
+  let state = "title";
+  let startClock = 0, waitStart = 0, pan = 0;
+  let shownChars = -1, curPage = -1, skipPage = -1;
+  let lastFrame = performance.now();
+
+  function storyTime() {
+    if (voiceOK && voice.currentTime > 0 && !voice.paused) return voice.currentTime;
+    if (voiceOK && voice.ended) return voice.duration;
+    return (performance.now() - startClock) / 1000;
+  }
+
+  function pageText(page, t, full) {
+    return LINES.filter(l => l.page === page).map(l => {
+      if (full) return l.text;
+      const k = Math.max(0, Math.min(1, (t - l.t0) / (l.t1 - l.t0)));
+      return l.text.slice(0, Math.floor(l.text.length * k));
+    }).filter(Boolean).join(" ");
+  }
+
+  function startStory() {
+    state = "story";
+    chip();
+    beep(523, 0.08); beep(784, 0.12, "square", 0.04, 0.08);
+    titleEl.hidden = true;
+    dialog.hidden = false;
+    dialog.classList.remove("open"); void dialog.offsetWidth; dialog.classList.add("open");
+    textEl.textContent = "";
+    shownChars = -1; curPage = -1; skipPage = -1;
+    pan = reduce ? 1 : 0;
+    startClock = performance.now();
+    voice.currentTime = 0;
+    const p = voice.play();
+    if (p && p.catch) p.catch(() => { voiceOK = false; });
+  }
+
+  function enterWait() {
+    state = "wait";
+    waitStart = performance.now();
+    nextEl.hidden = false;
+    prompt.hidden = false;
+  }
+
+  function goToAct() {
+    if (state !== "wait" && state !== "story") return;
+    state = "fading";
+    voice.pause();
+    beep(392, 0.1); beep(262, 0.18, "square", 0.04, 0.1);
+    prompt.hidden = true;
+    fade.classList.remove("on"); void fade.offsetWidth; fade.classList.add("on");
+    setTimeout(showAct, reduce ? 50 : 1100);
+  }
+
+  function showAct() {
+    state = "act";
+    dialog.hidden = true;
+    act.hidden = false;
+    const title = $("act-title");
+    title.textContent = "";
+    const chars = [..."ACT 1"];
+    chars.forEach((ch, i) => {
+      const s = document.createElement("span");
+      s.className = "ch"; s.textContent = ch === " " ? " " : ch;
+      s.setAttribute("aria-hidden", "true");
+      title.appendChild(s);
+      setTimeout(() => {
+        s.classList.add("in");
+        if (ch !== " ") beep([392, 523, 659, 0, 784][i] || 784, 0.16, "square", 0.05);
+      }, 350 + i * 180);
+    });
+    const done = 350 + chars.length * 180;
+    setTimeout(() => {
+      $("act-rule").classList.add("in");
+      beep(1047, 0.5, "triangle", 0.08);
+      beep(784, 0.5, "triangle", 0.06, 0.02);
+    }, done);
+    setTimeout(() => $("replay").classList.add("in"), done + 3000);
+  }
+
+  function resetToTitle() {
+    act.hidden = true;
+    $("act-rule").classList.remove("in");
+    $("replay").classList.remove("in");
+    fade.classList.remove("on");
+    nextEl.hidden = true;
+    prompt.hidden = true;
+    startStory();
+  }
+
+  function press() {
+    if (state === "title") startStory();
+    else if (state === "story") {
+      // finish the page on screen (the voice keeps talking), like an RPG text box
+      skipPage = curPage; beep(660, 0.04, "square", 0.03);
+    }
+    else if (state === "wait") goToAct();
+    else if (state === "act" && $("replay").classList.contains("in")) resetToTitle();
+  }
+  stage.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
+  addEventListener("keydown", (e) => {
+    if (e.key === " " || e.key === "Enter" || e.key === "z" || e.key === "Z") { e.preventDefault(); press(); }
+  });
+
+  // ---------- loop ----------
+  function drawWorld(dt, now) {
+    ctx.fillStyle = "#1b4bbf";
+    ctx.fillRect(0, 0, 640, 360);
+    // camera tilts down from the canopy to the road once the story starts
+    if (state !== "title" && pan < 1) pan = Math.min(1, pan + dt / 3.2);
+    const ease = pan < 0.5 ? 2 * pan * pan : 1 - Math.pow(-2 * pan + 2, 2) / 2;
+    const camY = Math.round(-88 * (state === "title" ? 0.25 : ease));
+    if (bg.complete && bg.naturalWidth) ctx.drawImage(bg, 0, camY, 640, 448);
+
+    for (const p of petals) {
+      p.y += p.vy * dt;
+      p.x += (p.vx + Math.sin(now / 700 + p.ph) * 12) * dt;
+      if (p.y > 352 || p.x < -10) { Object.assign(p, { y: -6, x: Math.random() * 700 }); }
+      ctx.fillStyle = p.c;
+      ctx.fillRect(Math.round(p.x), Math.round(p.y), p.s, 2);
+    }
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - lastFrame) / 1000);
+    lastFrame = now;
+    if (state !== "act") drawWorld(dt, now);
+
+    if (state === "story") {
+      const t = storyTime();
+      const page = t >= LINES[2].t0 - 0.05 ? 1 : 0;
+      if (page !== curPage) { curPage = page; shownChars = -1; }
+      const str = pageText(page, t, skipPage === page);
+      if (str.length !== shownChars) {
+        if (str.length > shownChars && shownChars >= 0 && /\w/.test(str[str.length - 1])) blip();
+        shownChars = str.length;
+        textEl.textContent = str;
+      }
+      if (t >= STORY_END || (voiceOK && voice.ended)) {
+        textEl.textContent = pageText(1, 99, true);
+        enterWait();
+      }
+    } else if (state === "wait") {
+      const left = Math.max(0, 1 - (now - waitStart) / 1000 / AUTO_WAIT);
+      timerFill.style.width = (Math.ceil(left * 20) * 5) + "%";
+      if (left <= 0) goToAct();
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

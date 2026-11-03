@@ -23,3 +23,7 @@ python quay_kings.py
 - **Player 2**: arrow keys, `Num1`/`,` punch, `Num2`/`.` kick, `Num3`/`/` fireball, `Num0`/`Right Shift` super.
 - Hold back to block (crouch-block sweeps, stand-block jump-ins). Land a punch or kick and press fireball or super right away to combo.
 - `ESC`/`P` pause, `F1` show hitboxes.
+
+# Prologue story scene (16-bit)
+
+Open `story.html` in a browser. Click to start: Itachi's voice line (`art/itachi_intro.mp3`) plays while the text types in sync in a SNES-style dialog window over La route des flamboyants. When he finishes, click to continue or wait 10 seconds; the screen fades to black and shows **ACT 1**. Space/Enter work too.
