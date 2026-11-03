@@ -202,7 +202,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103f";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261103g";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -263,6 +263,9 @@ body {
   // never cuts one voice to start another
   const narr = voice;
   let narrOK = true;
+  // A skipped line stops its voice while the next one loads: the browser reports that as an
+  // "AbortError". That is normal and must not switch the voice off for the rest of the story.
+  function voiceFailed(e) { if (e && e.name === "AbortError") return; narrOK = false; }
   ["line1", "line2", "line3", "line4", "line5", "line6"].forEach(n => { // warm the cache so each line starts at once
     try { fetch(ACT1_DIR + n + ".mp3" + VER).catch(() => {}); } catch (_) {}
   });
@@ -378,10 +381,9 @@ body {
     dateDone = !sc.date;
     lineDone = false;
     sceneClock = performance.now();
-    if (narrOK) {
-      narr.src = ACT1_DIR + sc.clip + VER; narr.dataset.clip = sc.clip;
-      const p = narr.play(); if (p && p.catch) p.catch(() => { narrOK = false; });
-    }
+    narrOK = true; // every line tries its voice again, even after a skipped one
+    narr.src = ACT1_DIR + sc.clip + VER; narr.dataset.clip = sc.clip;
+    const p = narr.play(); if (p && p.catch) p.catch(voiceFailed);
     state = "act1";
   }
 
@@ -524,10 +526,9 @@ body {
     scImg.style.transition = "opacity 3s linear";
     scImg.style.opacity = "1";
     fStart = performance.now(); fCue = -1; fBase = ""; fLine = ""; fLineAt = 0; fLineDur = 0; fEndedAt = 0;
-    if (narrOK) { // the scene's voice runs from the first frame of the fade in
-      voice.src = ACT1_DIR + "friends.mp3" + VER; voice.dataset.clip = "friends";
-      const p = voice.play(); if (p && p.catch) p.catch(() => { narrOK = false; });
-    }
+    narrOK = true; // the scene's voice runs from the first frame of the fade in
+    voice.src = ACT1_DIR + "friends.mp3" + VER; voice.dataset.clip = "friends";
+    const fp = voice.play(); if (fp && fp.catch) fp.catch(voiceFailed);
   }
 
   function friendsTime(now) { // follow the voice; after it ends (or without it) a clock carries on
