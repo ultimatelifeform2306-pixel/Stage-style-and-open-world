@@ -24,6 +24,6 @@ python quay_kings.py
 - Hold back to block (crouch-block sweeps, stand-block jump-ins). Land a punch or kick and press fireball or super right away to combo.
 - `ESC`/`P` pause, `F1` show hitboxes.
 
-# Prologue story scene (16-bit)
+# Prologue demo story (16-bit)
 
-Open `story.html` in a browser. Click to start: Itachi's voice line (`art/itachi_intro.mp3`) plays while the text types in sync in a SNES-style dialog window over La route des flamboyants. When he finishes, click to continue or wait 10 seconds; the screen fades to black and shows **ACT 1**. Space/Enter work too.
+Open `story.html` in a browser. On a black 16:9 screen, Itachi's voice line (`art/itachi_intro.mp3`) plays with movie-style subtitles typed in sync at the bottom. The last line is "Mister <name>": the name comes from `?name=` in the URL, or from the signed-in V-Devil profile. Click to continue or wait 10 seconds for **ACT 1**. The V-Devil site's Panel Sewi game panel opens it with its **SEE THE DEMO STORY** button.
