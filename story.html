@@ -247,14 +247,15 @@ body {
   // ===== ACT 1: narration (Fish Audio Itachi), one scene per line =====
   const ACT1_DIR = VOICE_DIR + "act1/";
   const SCENES = [
-    { bg: "black",  seg: [0.00, 1.32],  text: "Five months ago." },
-    { bg: "black",  seg: [1.97, 2.97],  text: "It was summer.", date: "17 JULY 2026 - 20 JULY 2026" },
-    { bg: "portal", seg: [3.33, 8.12],  text: "A portal had torn open the sky and thrown the whole gang into the heart of the Sahara.", fx: "shake" },
-    { bg: "video",  seg: [8.70, 11.88], text: "There, three evil villains were waiting for them." },
-    { bg: "battle", seg: [12.35, 16.78], text: "The battle was long. Brutal. The sand burned under their feet.", fx: "pan" },
-    { bg: "black",  seg: [16.91, 17.85], text: "But they won.", slowFade: true },
-    { bg: "black",  seg: [18.21, 24.52], text: "When the dust finally settled at the foot of the pyramids, there was only one feeling left: relief." },
+    // one screen per line; a line can hold several spoken parts, each typed while it is said
+    { bg: "black",  parts: [[0.00, 1.32, "Five months ago."], [1.97, 2.97, "It was summer."]], date: "17 JULY 2026 - 20 JULY 2026" },
+    { bg: "portal", fadeIn: 10, parts: [[3.33, 8.12, "A portal had torn open the sky and thrown them into the heart of the Sahara"]], fx: "shake", rumble: true },
+    { bg: "video",  parts: [[8.70, 11.88, "There, three evil villains were waiting for them"]] },
+    { bg: "battle", parts: [[12.35, 13.80, "The battle was long."], [13.95, 14.54, "Brutal."], [14.69, 16.78, "The sand burned under their feet"]], fx: "pan" },
+    { bg: "black",  parts: [[16.91, 17.85, "But they won"]], slowFade: true },
+    { bg: "black",  parts: [[18.21, 24.52, "When the dust finally settled at the foot of the pyramids, there was only one feeling left: relief."]] },
   ];
+  SCENES.forEach(sc => { sc.seg = [sc.parts[0][0], sc.parts[sc.parts.length - 1][1]]; sc.text = sc.parts.map(q => q[2]).join(" "); });
   const SCENE_WAIT = 30;   // seconds before the story moves on by itself
   const narr = new Audio(ACT1_DIR + "narration.mp3");
   narr.preload = "auto"; narr.setAttribute("playsinline", "");
@@ -275,6 +276,24 @@ body {
     const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
     f.type = "bandpass"; f.frequency.value = 2400 + Math.random() * 600; g.gain.value = 0.35;
     src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start();
+  }
+
+  function rumble(sec) { // portal tremor: low filtered noise with a slow wobble
+    const a = chip(); if (!a) return;
+    const len = Math.floor(a.sampleRate * sec), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) { last = last * 0.96 + (Math.random() * 2 - 1) * 0.04; d[i] = last * 6; }
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime;
+    f.type = "lowpass"; f.frequency.value = 160;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.9, t + 0.08);
+    g.gain.setValueAtTime(0.9, t + 0.6);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 1.2);
+    g.gain.setValueAtTime(0.25, t + sec - 0.8);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + sec);
+    src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start(t); src.stop(t + sec);
+    beep(55, 0.6, "sawtooth", 0.08); beep(41, 0.9, "square", 0.05, 0.05);
+    try { navigator.vibrate && navigator.vibrate([280, 80, 200, 80, 400]); } catch (_) {}
   }
 
   function unlockAct1Media() { // phones: media that will play later must first play inside a tap
@@ -299,6 +318,7 @@ body {
   }
 
   function nextScene() {
+    clearTimeout(fadeTimer);
     narr.pause();
     sub.classList.remove("waiting");
     if (si + 1 >= SCENES.length) return endDemo();
@@ -316,8 +336,19 @@ body {
     scImg.hidden = true; scImg.className = "";
     scVid.hidden = true; scVid.pause();
     scPx.hidden = true;
+    scImg.style.transition = ""; scImg.style.opacity = "";
     if (sc.bg === "portal" || sc.bg === "battle") {
       scImg.src = IMGS[sc.bg]; scImg.hidden = false;
+      if (sc.fadeIn && !reduce) { // long fade in from black; the line starts when the picture pops
+        scImg.style.opacity = "0";
+        void scImg.offsetWidth;
+        scImg.style.transition = "opacity " + sc.fadeIn + "s linear";
+        scImg.style.opacity = "1";
+        sub.innerHTML = ""; shown = "";
+        state = "act1-fade";
+        fadeTimer = setTimeout(() => popScene(sc), sc.fadeIn * 1000);
+        return;
+      }
       void scImg.offsetWidth; if (sc.fx) scImg.className = sc.fx;
     }
     vidDone = sc.bg !== "video";
@@ -326,6 +357,20 @@ body {
       const p = scVid.play();
       if (p && p.catch) p.catch(() => { scVid.muted = true; scVid.play().catch(() => { pixelFreeze(); }); });
     }
+    startLine(sc);
+  }
+
+  let fadeTimer = 0;
+  function popScene(sc) { // end of the fade in: flash, shake, tremor, then the line
+    clearTimeout(fadeTimer);
+    if (state !== "act1-fade") return;
+    scImg.style.transition = ""; scImg.style.opacity = "1";
+    void scImg.offsetWidth; if (sc.fx) scImg.className = sc.fx;
+    if (sc.rumble) rumble(3.2);
+    startLine(sc);
+  }
+
+  function startLine(sc) {
     dateDone = !sc.date;
     lineDone = false;
     sceneClock = performance.now();
@@ -388,8 +433,13 @@ body {
     const sc = SCENES[si];
     if (!lineDone) {
       const t = sceneTime(sc);
-      const k = Math.max(0, Math.min(1, (t - sc.seg[0]) / (sc.seg[1] - sc.seg[0])));
-      const html = esc(sc.text.slice(0, Math.floor(sc.text.length * k)));
+      const typed = [];
+      for (const [a, b, txt] of sc.parts) {
+        if (t < a) break;
+        const k = Math.max(0, Math.min(1, (t - a) / (b - a)));
+        typed.push(txt.slice(0, Math.floor(txt.length * k)));
+      }
+      const html = esc(typed.join(" "));
       if (html !== shown) { shown = html; sub.innerHTML = html; }
       if (t >= sc.seg[1] + 0.12) {
         narr.pause();
@@ -509,6 +559,7 @@ body {
     else if (state === "wait") goToAct();
     else if (state === "act" && performance.now() >= actReadyAt) startAct1();
     else if (state === "act1") nextScene();
+    else if (state === "act1-fade") popScene(SCENES[si]);
     else if (state === "end" && $("replay").classList.contains("in")) replay();
   }
   stage.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
