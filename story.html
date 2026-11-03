@@ -109,7 +109,35 @@ body {
 #replay { position: static; opacity: 0; transition: opacity 400ms steps(3); }
 #replay.in { opacity: 1; }
 
+/* ---- ACT 1 scenes ---- */
+#scene { position: absolute; inset: 0; background: var(--void); overflow: hidden; }
+#sc-img, #sc-vid, #sc-px { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+#sc-px { image-rendering: pixelated; image-rendering: crisp-edges; }
+#sc-img.shake { animation: rumble 120ms steps(2) infinite, jolt 700ms steps(7) 1; }
+@keyframes rumble {
+  0% { transform: scale(1.06) translate(0.35%, -0.25%); }
+  50% { transform: scale(1.06) translate(-0.35%, 0.3%); }
+  100% { transform: scale(1.06) translate(0.2%, 0.35%); }
+}
+@keyframes jolt { 0% { filter: brightness(2.2); } 100% { filter: none; } }
+#sc-img.pan { object-position: 50% 0%; animation: pan 14s linear forwards; }
+@keyframes pan { to { object-position: 50% 78%; } }
+#date {
+  position: absolute; left: 0; right: 0; top: 42%;
+  text-align: center;
+  font-size: 2.6cqw;
+  color: var(--gold);
+  text-shadow: 0.3cqw 0.3cqw 0 var(--ember);
+  letter-spacing: 0.06em;
+}
+#date.caret::after { content: "_"; animation: blink 0.6s steps(2) infinite; }
+#sub.waiting { animation: tap-me 1.4s steps(3) infinite; }
+@keyframes tap-me { 50% { opacity: 0.45; } }
+#cut { position: absolute; inset: 0; background: var(--void); opacity: 0; pointer-events: none; }
+#end-title { margin: 0; font-size: 4cqw; font-weight: 400; color: var(--gold); text-shadow: 0.5cqw 0.5cqw 0 var(--ember); }
+
 @media (prefers-reduced-motion: reduce) {
+  #sc-img.shake, #sc-img.pan, #sub.waiting { animation: none; }
   #start, #prompt span, #act-title .ch.in { animation: none; }
   #act-title .ch.in { opacity: 1; }
   #fade.on { animation-duration: 1ms; }
@@ -118,6 +146,13 @@ body {
 </head>
 <body>
 <div id="stage" role="application" aria-label="Demo story. Click or press Space to continue.">
+  <div id="scene" hidden>
+    <img id="sc-img" alt="" hidden>
+    <video id="sc-vid" playsinline preload="auto" hidden></video>
+    <canvas id="sc-px" width="256" height="144" hidden></canvas>
+    <div id="date" aria-live="polite"></div>
+  </div>
+  <div id="cut"></div>
   <p id="sub" aria-live="polite"></p>
   <div id="start" class="hint" hidden>&#9654; TAP TO START</div>
   <div id="prompt" class="hint" hidden>
@@ -128,6 +163,9 @@ body {
   <div id="act" hidden>
     <h2 id="act-title" aria-label="Act 1"></h2>
     <div id="act-rule"></div>
+  </div>
+  <div id="end" hidden style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3cqw;background:var(--void)">
+    <h2 id="end-title">TO BE CONTINUED</h2>
     <div id="replay" class="hint">CLICK TO REPLAY</div>
   </div>
 </div>
@@ -206,7 +244,177 @@ body {
   // Any other name appears in the subtitle only.
 
 
-  // states: idle (waiting for a tap) -> story -> wait -> fading -> act
+  // ===== ACT 1: narration (Fish Audio Itachi), one scene per line =====
+  const ACT1_DIR = VOICE_DIR + "act1/";
+  const SCENES = [
+    { bg: "black",  seg: [0.00, 1.32],  text: "Five months ago." },
+    { bg: "black",  seg: [1.97, 2.97],  text: "It was summer.", date: "17 JULY 2026 - 20 JULY 2026" },
+    { bg: "portal", seg: [3.33, 8.12],  text: "A portal had torn open the sky and thrown the whole gang into the heart of the Sahara.", fx: "shake" },
+    { bg: "video",  seg: [8.70, 11.88], text: "There, three evil villains were waiting for them." },
+    { bg: "battle", seg: [12.35, 16.78], text: "The battle was long. Brutal. The sand burned under their feet.", fx: "pan" },
+    { bg: "black",  seg: [16.91, 17.85], text: "But they won.", slowFade: true },
+    { bg: "black",  seg: [18.21, 24.52], text: "When the dust finally settled at the foot of the pyramids, there was only one feeling left: relief." },
+  ];
+  const SCENE_WAIT = 30;   // seconds before the story moves on by itself
+  const narr = new Audio(ACT1_DIR + "narration.mp3");
+  narr.preload = "auto"; narr.setAttribute("playsinline", "");
+  let narrOK = true;
+  narr.addEventListener("error", () => { narrOK = false; });
+  const scene = $("scene"), scImg = $("sc-img"), scVid = $("sc-vid"), scPx = $("sc-px"), dateEl = $("date"), cut = $("cut");
+  const IMGS = { portal: ACT1_DIR + "portal.jpg", battle: ACT1_DIR + "battle.jpg" };
+  Object.values(IMGS).forEach(src => { const im = new Image(); im.src = src; });
+  scVid.src = ACT1_DIR + "villains.mp4";
+  scVid.volume = 0.5;
+
+  let si = -1, sceneClock = 0, sceneWaitStart = 0, lineDone = false, dateDone = true, vidDone = true, dateTimer = 0;
+
+  function keyClick() { // typewriter key: a short filtered noise tick
+    const a = chip(); if (!a) return;
+    const len = Math.floor(a.sampleRate * 0.03), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    f.type = "bandpass"; f.frequency.value = 2400 + Math.random() * 600; g.gain.value = 0.35;
+    src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start();
+  }
+
+  function unlockAct1Media() { // phones: media that will play later must first play inside a tap
+    try { narr.muted = true; const p = narr.play(); if (p && p.then) p.then(() => { narr.pause(); narr.muted = false; }).catch(() => { narr.muted = false; }); } catch (_) {}
+    try { scVid.muted = true; const p = scVid.play(); if (p && p.then) p.then(() => { scVid.pause(); scVid.currentTime = 0; scVid.muted = false; }).catch(() => { scVid.muted = false; }); } catch (_) {}
+  }
+
+  function blackCut(ms, mid) { // stepped fade to black, swap, fade back
+    cut.style.transition = "opacity " + ms + "ms steps(" + Math.max(2, Math.round(ms / 100)) + ")";
+    cut.style.opacity = "1";
+    setTimeout(() => { mid(); requestAnimationFrame(() => { cut.style.opacity = "0"; }); }, reduce ? 0 : ms);
+  }
+
+  function startAct1() {
+    state = "act1";
+    act.hidden = true;
+    $("act-rule").classList.remove("in");
+    fade.classList.remove("on");
+    scene.hidden = false;
+    si = -1;
+    nextScene();
+  }
+
+  function nextScene() {
+    narr.pause();
+    sub.classList.remove("waiting");
+    if (si + 1 >= SCENES.length) return endDemo();
+    const prev = SCENES[si], sc = SCENES[si + 1];
+    const swap = () => { si++; setupScene(sc); };
+    state = "act1-cut";
+    if (si < 0) swap();
+    else blackCut(sc.slowFade ? 1200 : (prev.bg === sc.bg && sc.bg === "black" ? 200 : 450), swap);
+  }
+
+  function setupScene(sc) {
+    clearInterval(dateTimer);
+    sub.innerHTML = ""; shown = "";
+    dateEl.textContent = ""; dateEl.classList.remove("caret");
+    scImg.hidden = true; scImg.className = "";
+    scVid.hidden = true; scVid.pause();
+    scPx.hidden = true;
+    if (sc.bg === "portal" || sc.bg === "battle") {
+      scImg.src = IMGS[sc.bg]; scImg.hidden = false;
+      void scImg.offsetWidth; if (sc.fx) scImg.className = sc.fx;
+    }
+    vidDone = sc.bg !== "video";
+    if (sc.bg === "video") {
+      scVid.hidden = false; scVid.currentTime = 0; scVid.muted = false;
+      const p = scVid.play();
+      if (p && p.catch) p.catch(() => { scVid.muted = true; scVid.play().catch(() => { pixelFreeze(); }); });
+    }
+    dateDone = !sc.date;
+    lineDone = false;
+    sceneClock = performance.now();
+    if (narrOK) {
+      narr.currentTime = sc.seg[0];
+      const p = narr.play(); if (p && p.catch) p.catch(() => { narrOK = false; });
+    }
+    state = "act1";
+  }
+
+  // the clip ends: freeze its last frame as a 16-bit picture (low resolution, few colours, ordered dither)
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function pixelFreeze() {
+    if (vidDone) return;
+    vidDone = true;
+    const c = scPx.getContext("2d", { willReadFrequently: true });
+    const steps = reduce ? [256] : [1024, 512, 384, 256];
+    let k = 0;
+    function draw() {
+      const w = steps[k], h = Math.round(w * 9 / 16);
+      scPx.width = w; scPx.height = h;
+      c.imageSmoothingEnabled = true;
+      try { c.drawImage(scVid, 0, 0, w, h); } catch (_) {}
+      if (w === 256) {
+        try {
+          const im = c.getImageData(0, 0, w, h), d = im.data, lv = 5; // 5 levels per channel
+          for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+            const i = (y * w + x) * 4, t = (BAYER[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * (255 / lv);
+            for (let ch = 0; ch < 3; ch++) d[i + ch] = Math.max(0, Math.min(255, Math.round((d[i + ch] + t) / 255 * (lv - 1)) * (255 / (lv - 1))));
+          }
+          c.putImageData(im, 0, 0);
+        } catch (_) {}
+      }
+      scPx.hidden = false; scVid.hidden = true;
+      if (++k < steps.length) setTimeout(draw, 110);
+      else beep(523, 0.08, "square", 0.04);
+    }
+    draw();
+  }
+  scVid.addEventListener("ended", pixelFreeze);
+  scVid.addEventListener("error", () => { vidDone = true; });
+
+  function typeDate(text) {
+    let i = 0;
+    dateEl.classList.add("caret");
+    dateTimer = setInterval(() => {
+      i++;
+      dateEl.textContent = text.slice(0, i);
+      if (text[i - 1] && text[i - 1] !== " ") keyClick();
+      if (i >= text.length) { clearInterval(dateTimer); dateDone = true; setTimeout(() => dateEl.classList.remove("caret"), 900); }
+    }, 85);
+  }
+
+  function sceneTime(sc) {
+    if (narrOK && !narr.paused && narr.currentTime >= sc.seg[0] - 0.05) return narr.currentTime;
+    return sc.seg[0] + (performance.now() - sceneClock) / 1000;
+  }
+
+  function tickScene(now) {
+    const sc = SCENES[si];
+    if (!lineDone) {
+      const t = sceneTime(sc);
+      const k = Math.max(0, Math.min(1, (t - sc.seg[0]) / (sc.seg[1] - sc.seg[0])));
+      const html = esc(sc.text.slice(0, Math.floor(sc.text.length * k)));
+      if (html !== shown) { shown = html; sub.innerHTML = html; }
+      if (t >= sc.seg[1] + 0.12) {
+        narr.pause();
+        lineDone = true;
+        sub.innerHTML = esc(sc.text); shown = sub.innerHTML;
+        if (sc.date) typeDate(sc.date);
+      }
+    } else if (dateDone && vidDone) {
+      if (!sub.classList.contains("waiting")) { sub.classList.add("waiting"); sceneWaitStart = now; }
+      else if (now - sceneWaitStart >= SCENE_WAIT * 1000) nextScene();
+    }
+  }
+
+  function endDemo() {
+    state = "end";
+    blackCut(900, () => {
+      scene.hidden = true; scVid.pause();
+      sub.innerHTML = ""; shown = "";
+      $("end").hidden = false;
+      beep(659, 0.2, "triangle", 0.06); beep(523, 0.4, "triangle", 0.06, 0.2);
+      setTimeout(() => $("replay").classList.add("in"), 2500);
+    });
+  }
+
+  // states: idle (waiting for a tap) -> story -> wait -> fading -> act -> act1 scenes -> end
   let state = "idle", startClock = 0, waitStart = 0, shown = "";
 
   function storyTime() {
@@ -240,7 +448,7 @@ body {
   }
 
   function tryStart(fromTap) {
-    if (fromTap) { try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {} }
+    if (fromTap) { try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {} unlockAct1Media(); }
     voice.currentTime = 0;
     const p = voice.play();
     if (p && p.then) {
@@ -280,11 +488,14 @@ body {
     });
     const done = 350 + chars.length * 180;
     setTimeout(() => { $("act-rule").classList.add("in"); beep(1047, 0.5, "triangle", 0.08); beep(784, 0.5, "triangle", 0.06, 0.02); }, done);
-    setTimeout(() => $("replay").classList.add("in"), done + 3000);
+    actReadyAt = performance.now() + done + 400;
+    setTimeout(() => { if (state === "act") startAct1(); }, done + 2600);
   }
+  let actReadyAt = 0;
 
   function replay() {
     act.hidden = true;
+    $("end").hidden = true;
     $("act-rule").classList.remove("in");
     $("replay").classList.remove("in");
     fade.classList.remove("on");
@@ -296,7 +507,9 @@ body {
     chip();
     if (state === "idle") tryStart(true);
     else if (state === "wait") goToAct();
-    else if (state === "act" && $("replay").classList.contains("in")) replay();
+    else if (state === "act" && performance.now() >= actReadyAt) startAct1();
+    else if (state === "act1") nextScene();
+    else if (state === "end" && $("replay").classList.contains("in")) replay();
   }
   stage.addEventListener("pointerdown", (e) => { e.preventDefault(); press(); });
   addEventListener("keydown", (e) => {
@@ -312,7 +525,7 @@ body {
       const left = Math.max(0, 1 - (now - waitStart) / 1000 / AUTO_WAIT);
       timerFill.style.width = (Math.ceil(left * 20) * 5) + "%";
       if (left <= 0) goToAct();
-    }
+    } else if (state === "act1") tickScene(now);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
