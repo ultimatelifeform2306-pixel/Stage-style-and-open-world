@@ -159,6 +159,12 @@ body {
 #a2-date { font-size: 2.6cqw; color: var(--flame); letter-spacing: 0.06em; text-shadow: 0.3cqw 0.3cqw 0 var(--ember); min-height: 1.2em; }
 #a2-date.caret::after { content: "_"; animation: blink 0.6s steps(2) infinite; }
 
+/* ---- ACT II, part 1: April to August ---- */
+#sc-img2 { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; }
+#tint { position: absolute; inset: 0; background: #ff1a0a; mix-blend-mode: multiply; opacity: 0; pointer-events: none; }
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#date.red { color: var(--flame); text-shadow: 0.3cqw 0.3cqw 0 var(--ember); }
+
 @media (prefers-reduced-motion: reduce) {
   #a2-title.slam, #act2.flash, #stage.quake { animation: none; }
   #sc-img.shake, #sc-img.pan, #sub.waiting { animation: none; }
@@ -174,6 +180,9 @@ body {
     <img id="sc-img" alt="" hidden>
     <video id="sc-vid" playsinline preload="auto" hidden></video>
     <canvas id="sc-px" width="256" height="144" hidden></canvas>
+    <img id="sc-img2" alt="" hidden>
+    <div id="tint"></div>
+    <div id="flash"></div>
     <div id="date" aria-live="polite"></div>
   </div>
   <div id="cut"></div>
@@ -235,7 +244,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261103j";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261106a";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -534,7 +543,7 @@ body {
   // ===== ACT II: the screen cuts to black, then the title slams in on the bell's strike =====
   const ACT2_DIR = VOICE_DIR + "act2/";
   const A2 = { pauseAfterLine: 1.2, blackAt: 0, hitAt: 0.64, dateAfterHit: 1.4, date: "24 AUGUST 2026 - 25 SEPTEMBER 2026" };
-  let frozenAt = 0, a2Start = 0, a2Black = false, a2Hit = false, a2DateStarted = false, stingOK = true;
+  let a2DoneAt = 0, frozenAt = 0, a2Start = 0, a2Black = false, a2Hit = false, a2DateStarted = false, stingOK = true;
   function stingFailed(e) { if (e && e.name === "AbortError") return; stingOK = false; }
 
   function startAct2() {
@@ -574,7 +583,7 @@ body {
         i++;
         el.textContent = text.slice(0, i);
         if (text[i - 1] && text[i - 1] !== " ") keyClick();
-        if (i >= text.length) { clearInterval(timer); setTimeout(() => el.classList.remove("caret"), 900); state = "end"; }
+        if (i >= text.length) { clearInterval(timer); setTimeout(() => el.classList.remove("caret"), 900); state = "end"; a2DoneAt = performance.now(); }
       }, 85);
     }
   }   // letters per second for the subtitles in this scene
@@ -586,6 +595,135 @@ body {
     scImg.style.transform = ""; scImg.style.filter = "";
     scImg.src = PICS[name]; scImg.hidden = false;
   }
+  // ===== ACT II, part 1: "Between April and August" =====
+  // 5 s on the ACT II card, a 2 s fade to black, then one continuous scene timed on story2.mp3
+  // (narration, the video's whoosh, the closing clap). at = when it is heard, dur = how long.
+  const S2 = { hold: 5, fade: 2 };
+  const S2_LINES = [
+    { at: 0.40,  dur: 1.58, text: "Between April and August," },
+    { at: 2.58,  dur: 2.27, text: "Kenos left the Kanel Gang of Madara" },
+    { at: 5.05,  dur: 1.17, text: "and the French Legacy.", add: true },
+    { at: 6.61,  dur: 1.59, text: "Some of the members followed him." },
+    { at: 10.60, dur: 0.69, text: "In August," },
+    { at: 12.10, dur: 1.66, text: "Kenos has a new haircut." },
+    { at: 14.01, dur: 1.84, text: "A new vision of success in life." },
+    { at: 16.00, dur: 0.82, text: "A new start.", add: true },
+    { at: 17.91, dur: 1.06, text: "With his girlfriend," },
+    { at: 19.14, dur: 1.03, text: "things seemed good.", add: true },
+    { at: 20.86, dur: 1.50, text: "A little weird sometimes." },
+    { at: 22.68, dur: 1.68, text: "Kenos always went too far.", add: true },
+    { at: 24.74, dur: 3.18, text: "But when he loves someone, he can be immature and unconscious." },
+    { at: 28.26, dur: 2.28, text: "Don't know what's gonna happen in a few months." },
+  ];
+  const S2_FX = [
+    { at: 2.30,  fx: "video" },     // Kenos leaves (the clip plays once, then holds its last frame)
+    { at: 6.40,  fx: "members" },   // 0.1 s white flash into the members picture
+    { at: 9.20,  fx: "august" },    // black, AUGUST 2026 types in red
+    { at: 11.80, fx: "haircut" },
+    { at: 15.90, fx: "zoom" },      // push into his face...
+    { at: 17.75, fx: "face" },      // ...until it becomes the close-up
+    { at: 20.60, fx: "red" },       // red creeps in, the picture starts to tremble
+    { at: 30.85, fx: "clap" },      // clap: black
+  ];
+  const scImg2 = $("sc-img2"), tint = $("tint"), flashEl = $("flash");
+  const S2_PICS = { members: ACT2_DIR + "members.jpg" + VER, haircut: ACT2_DIR + "haircut.jpg" + VER, face: ACT2_DIR + "face.jpg" + VER };
+  Object.values(S2_PICS).forEach(src => { const im = new Image(); im.src = src; });
+  let s2Start = 0, s2Fx = -1, s2Cue = -1, s2Base = "", s2Line = "", s2LineAt = 0, s2LineDur = 1, s2EndedAt = 0, s2RedAt = 0, s2ShakeAt = 0;
+
+  function s2Black() {
+    scImg.hidden = true; scImg.className = ""; scImg.style.transform = ""; scImg.style.transition = ""; scImg.style.opacity = ""; scImg.style.filter = "";
+    scImg2.hidden = true; scImg2.style.opacity = "0"; scImg2.style.transform = ""; scImg2.style.transition = "";
+    scVid.hidden = true; scVid.pause(); scPx.hidden = true;
+    dateEl.textContent = ""; dateEl.className = "";
+  }
+
+  function startStory2() { // after the fade to black
+    state = "story2";
+    $("act2").hidden = true; $("act2").style.transition = ""; $("act2").style.opacity = "";
+    scene.hidden = false; s2Black();
+    tint.style.transition = ""; tint.style.opacity = "0";
+    cut.style.transition = ""; cut.style.opacity = "0";
+    vidDone = true;
+    scVid.src = ACT2_DIR + "left.mp4" + VER; scVid.load();
+    narrOK = true;
+    voice.src = ACT2_DIR + "story2.mp3" + VER; voice.dataset.clip = "story2";
+    const p = voice.play(); if (p && p.catch) p.catch(voiceFailed);
+    s2Start = performance.now(); s2Fx = -1; s2Cue = -1; s2Base = ""; s2Line = ""; s2EndedAt = 0; s2RedAt = 0;
+    sub.innerHTML = ""; shown = "";
+  }
+
+  function story2Time(now) {
+    const el = (now - s2Start) / 1000;
+    if (narrOK && voice.dataset.clip === "story2") {
+      if (voice.ended) { if (!s2EndedAt) s2EndedAt = now; return voice.duration + (now - s2EndedAt) / 1000; }
+      if (el < voice.currentTime + 3) return voice.currentTime;
+    }
+    return el;
+  }
+
+  function s2Effect(fx) {
+    if (fx === "video") {
+      s2Black(); scVid.hidden = false; scVid.currentTime = 0;
+      const p = scVid.play(); if (p && p.catch) p.catch(() => {});
+    } else if (fx === "members") {
+      flashEl.style.transition = ""; flashEl.style.opacity = "1";
+      s2Black(); scImg.src = S2_PICS.members; scImg.hidden = false;
+      setTimeout(() => { flashEl.style.transition = "opacity 100ms linear"; flashEl.style.opacity = "0"; }, 100);
+    } else if (fx === "august") {
+      s2Black(); sub.innerHTML = ""; shown = ""; s2Line = ""; s2Base = "";
+      dateEl.className = "red caret";
+      const text = "AUGUST 2026"; let i = 0;
+      const timer = setInterval(() => {
+        i++; dateEl.textContent = text.slice(0, i);
+        if (text[i - 1] && text[i - 1] !== " ") keyClick();
+        if (i >= text.length) { clearInterval(timer); setTimeout(() => dateEl.classList.remove("caret"), 900); }
+      }, 85);
+    } else if (fx === "haircut") {
+      s2Black(); scImg.src = S2_PICS.haircut; scImg.hidden = false;
+      scImg.style.opacity = "0"; void scImg.offsetWidth;
+      scImg.style.transition = "opacity 0.6s linear"; scImg.style.opacity = "1";
+    } else if (fx === "zoom") { // his face sits at 50% across, 18% down in haircut.jpg
+      scImg.style.transition = "transform 1.85s ease-in";
+      scImg.style.transform = "scale(4.5) translate(0%, 32%)";
+    } else if (fx === "face") {
+      scImg2.src = S2_PICS.face; scImg2.hidden = false;
+      scImg2.style.transition = ""; scImg2.style.opacity = "0"; scImg2.style.transform = "scale(1.15)";
+      void scImg2.offsetWidth;
+      scImg2.style.transition = "opacity 0.35s linear, transform 2.4s ease-out";
+      scImg2.style.opacity = "1"; scImg2.style.transform = "scale(1.04)";
+      setTimeout(() => { if (state === "story2") scImg.hidden = true; }, 400);
+    } else if (fx === "red") {
+      s2RedAt = performance.now();
+      tint.style.transition = "opacity 9s linear"; tint.style.opacity = "0.6";
+      scImg2.style.transition = "opacity 0.35s linear";
+    } else if (fx === "clap") {
+      s2Black(); tint.style.transition = ""; tint.style.opacity = "0";
+      sub.innerHTML = ""; shown = ""; s2Line = "";
+      state = "end2"; // the story stops on black
+    }
+  }
+
+  function tickStory2(now) {
+    const t = story2Time(now);
+    while (s2Fx + 1 < S2_FX.length && t >= S2_FX[s2Fx + 1].at) { s2Effect(S2_FX[++s2Fx].fx); if (state !== "story2") return; }
+    while (s2Cue + 1 < S2_LINES.length && t >= S2_LINES[s2Cue + 1].at) {
+      const c = S2_LINES[++s2Cue];
+      s2Base = c.add ? s2Base + (s2Line ? s2Line + " " : "") : "";
+      s2Line = c.text; s2LineAt = c.at; s2LineDur = c.dur;
+    }
+    if (s2Line) {
+      const n = Math.min(s2Line.length, Math.floor(s2Line.length * Math.max(0, (t - s2LineAt) / s2LineDur)));
+      const html = esc(s2Base + s2Line.slice(0, n));
+      if (html !== shown) { shown = html; sub.innerHTML = html; }
+    }
+    if (s2RedAt && !reduce && now - s2ShakeAt > 45) { // the tremble grows with the red
+      s2ShakeAt = now;
+      const amp = Math.min(1.4, (now - s2RedAt) / 9000 * 1.4);
+      const dx = (Math.random() * 2 - 1) * amp, dy = (Math.random() * 2 - 1) * amp * 0.7;
+      scImg2.style.transform = "scale(1.06) translate(" + dx.toFixed(2) + "%, " + dy.toFixed(2) + "%)";
+    }
+  }
+
   function setView(name) {
     const v = VIEWS[name];
     const clamp = (p) => Math.max(50 / v.z, Math.min(100 - 50 / v.z, p)); // never show past the picture's edge
@@ -763,6 +901,13 @@ body {
       ((!narrOK || voice.dataset.clip !== "friends") && now - frozenAt >= A2.pauseAfterLine * 1000) ||
       now - frozenAt >= 4000)) startAct2();
     else if (state === "act2") tickAct2(now);
+    else if (state === "end" && a2DoneAt && now - a2DoneAt >= S2.hold * 1000) { // hold the card, then fade to black
+      state = "s2fade";
+      const card = $("act2");
+      card.style.transition = "opacity " + S2.fade + "s linear"; card.style.opacity = "0";
+      setTimeout(startStory2, reduce ? 0 : S2.fade * 1000);
+    }
+    else if (state === "story2") tickStory2(now);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
