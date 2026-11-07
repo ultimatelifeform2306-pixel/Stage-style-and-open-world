@@ -268,7 +268,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261107a";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261107b";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -755,26 +755,41 @@ body {
   ["map", "spend", "station", "chicken", "zara", "phone", "laugh", "mask"].forEach(n => {
     S3_PICS[n] = ACT2B_DIR + n + ".jpg" + VER; const im = new Image(); im.src = S3_PICS[n];
   });
+  // at = when it starts (seconds from "September."), timed on story3.mp3 up to the phone scene;
+  // dur = how long the line is spoken. The last lines have no recording yet and type on their own.
   const S3 = [
-    { fx: "black",   text: "September.", hold: 1.4 },
-    { fx: "title",   hold: 2.2 },
-    { fx: "map",     text: "He traveled from country to country", hold: 1.0 },
-    { fx: "brussels", text: "Brussels…", hold: 0.9 },
-    { fx: "rotterdam", text: "Rotterdam.", add: true, hold: 2.2 },
-    { fx: "spend",   text: "Spending his money like a fool.", hold: 2.0 },
-    { fx: "station", text: "Kenos sometimes loves to make people happy, buying them things so they never go without…", hold: 1.2 },
-    { text: "Even if he's mean with people… he has a generous heart.", hold: 2.2 },
-    { fx: "chicken", text: "Food for his best friends.", hold: 2.0 },
-    { fx: "zara",    text: "Especially for her… even his mom said he loves her so much.", hold: 2.2 },
-    { fx: "texting", text: "But in messages, Kenos seemed sassy and cold with her…", hold: 2.0 },
-    { fx: "phone",   text: "He acts like this with the people he cares about the most.", hold: 3.6 },
-    { fx: "laugh",   text: "With her, Kenos acted with two personalities,", hold: 0.6 },
-    { text: "when deep down she wanted his happiness without showing it.", hold: 2.2 },
-    { fx: "mask",    text: "But for her… it was not what she was looking for.", hold: 2.2 },
-    { fx: "maskzoom", text: "Behind her smile, she was hiding something.", dur: 4.2, hold: 1.4 },
-    { fx: "end" },
+    { at: 0.00,  fx: "black" },
+    { at: 0.31,  dur: 0.72, text: "September." },
+    { at: 1.60,  fx: "title" },
+    { at: 4.60,  fx: "map" },
+    { at: 5.20,  dur: 1.95, text: "He traveled from country to country" },
+    { at: 7.55,  fx: "brussels" },
+    { at: 7.60,  dur: 0.72, text: "Brussels…" },
+    { at: 8.70,  fx: "rotterdam" },
+    { at: 8.76,  dur: 0.74, text: "Rotterdam.", add: true },
+    { at: 10.60, fx: "spend" },
+    { at: 10.80, dur: 1.81, text: "Spending his money like a fool." },
+    { at: 13.60, fx: "station" },
+    { at: 13.80, dur: 2.72, text: "Kenos sometimes loves to make some people happy" },
+    { at: 16.64, dur: 2.51, text: "and buy stuff to not see them missing something…" },
+    { at: 19.37, dur: 1.91, text: "Regardless, he is mean with people…" },
+    { at: 21.51, dur: 1.33, text: "he has a generous heart.", add: true },
+    { at: 23.80, fx: "chicken" },
+    { at: 24.10, dur: 1.53, text: "Food for his best friend." },
+    { at: 26.40, fx: "zara" },
+    { at: 26.60, dur: 1.19, text: "Especially for her…" },
+    { at: 28.06, dur: 2.61, text: "even his mom said he loves her so much.", add: true },
+    { at: 31.60, fx: "texting" },
+    { at: 31.90, dur: 2.94, text: "But on messages, Kenos appeared sassy and cold with her…" },
+    { at: 35.60, fx: "phone" },
+    { at: 36.20, dur: 2.43, text: "He acts like this to the people he cares about the most." },
+    { at: 40.20, fx: "laugh", text: "With her, Kenos acted with two personalities," },
+    { at: 43.60, text: "when deep down she wanted his happiness without showing it." },
+    { at: 49.60, fx: "mask", text: "But for her… it was not what she was looking for." },
+    { at: 54.90, fx: "maskzoom", dur: 4.2, text: "Behind her smile, she was hiding something." },
+    { at: 60.50, fx: "end" },
   ];
-  (function timeS3() { let at = 0; S3.forEach(b => { b.at = at; b.dur = b.dur || (b.text ? b.text.length / 16 : 0); at += b.dur + (b.hold || 0); }); })();
+  S3.forEach(b => { if (b.text && !b.dur) b.dur = b.text.length / 16; });
   // the text messages that pop up on her phone (his texts)
   const S3_TEXTS = ["I'm gonna break up", "Sike, it's a joke. I love you anyways", "You wanna eat some alloco?"];
 
@@ -789,40 +804,24 @@ body {
     const k = Math.min(1, (now - trainLegAt) / 1000 / trainLegDur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
     return [trainFrom[0] + (trainTo[0] - trainFrom[0]) * e, trainFrom[1] + (trainTo[1] - trainFrom[1]) * e];
   }
-  const TRAIN = [ // 14x8 pixel engine and car, drawn 2x
-    "..kkkk........",
-    "..krrk..kkkkkk",
-    "kkkrrkkkkrwwrk",
-    "krrrrrrrkrwwrk",
-    "krryyrrrkrrrrk",
-    "kkkkkkkkkkkkkk",
-    ".kgk.kgk.kgkgk",
-    "..k...k...k.k.",
-  ];
-  const TPAL = { k: "#1a0f0f", r: "#e8301c", y: "#ffd25a", w: "#bfe4ff", g: "#6b6b6b" };
+  // the Eurostar: a 16-bit token made from the photo (68x47, pointer at the bottom middle)
+  const EUROSTAR = new Image(); EUROSTAR.src = ACT2B_DIR + "eurostar.png" + VER;
   function drawTrain(now) {
     tc.clearRect(0, 0, 688, 384);
+    tc.imageSmoothingEnabled = false;
     // Rotterdam: a stop the map doesn't show, added in the map's own style
     const [rx, ry] = STOPS.rotterdam.map(v => v / 2);
     tc.fillStyle = "#1a0f0f"; tc.fillRect(rx - 5, ry - 5, 10, 10);
     tc.fillStyle = Math.floor(now / 400) % 2 ? "#ffd25a" : "#e8301c"; tc.fillRect(rx - 3, ry - 3, 6, 6);
     tc.font = "8px 'Press Start 2P', monospace"; tc.fillStyle = "#000"; tc.fillText("ROTTERDAM", rx - 76 + 1, ry + 16 + 1);
     tc.fillStyle = "#fff"; tc.fillText("ROTTERDAM", rx - 76, ry + 16);
-    const [x, y] = trainPos(now).map(v => v / 2), bob = Math.floor(now / 120) % 2;
-    const flip = trainTo[0] < trainFrom[0];
-    TRAIN.forEach((row, j) => [...row].forEach((ch, i) => {
-      if (!TPAL[ch]) return;
-      tc.fillStyle = TPAL[ch];
-      const px = flip ? x + 21 - (i * 3) : x - 21 + i * 3; // drawn 3x so it reads on a phone
-      tc.fillRect(Math.round(px), Math.round(y - 26 + j * 3 + (j > 5 ? 0 : bob)), 3, 3);
-    }));
-    const moving = (now - trainLegAt) / 1000 < trainLegDur;
-    if (moving) for (let p = 0; p < 3; p++) { // puffs of smoke
-      const age = ((now / 600) + p / 3) % 1;
-      tc.fillStyle = "rgba(255,255,255," + (0.8 - age * 0.8).toFixed(2) + ")";
-      const sz = 2 + Math.floor(age * 4);
-      tc.fillRect(Math.round(x + (flip ? 15 : -15) - age * 8), Math.round(y - 28 - age * 14), sz + 1, sz + 1);
+    const [x, y] = trainPos(now).map(v => v / 2);
+    const moving = (now - trainLegAt) / 1000 < trainLegDur, bob = moving ? Math.floor(now / 90) % 2 : 0;
+    if (moving) { // speed lines behind it
+      tc.fillStyle = "rgba(255,255,255,0.85)";
+      for (let k = 0; k < 3; k++) tc.fillRect(Math.round(x - 40 - k * 6 - (now / 30 % 6)), Math.round(y - 38 + k * 9), 10 + k * 3, 2);
     }
+    if (EUROSTAR.complete && EUROSTAR.naturalWidth) tc.drawImage(EUROSTAR, Math.round(x - 34), Math.round(y - 47 - bob));
   }
 
   let s3Start = 0, s3Beat = -1, s3Base = "", s3Line = "", s3LineAt = 0, s3LineDur = 1, s3Timers = [];
@@ -834,11 +833,23 @@ body {
     scImg.style.objectPosition = ""; scImg.classList.remove("blurin");
     s3Timers.forEach(clearTimeout); s3Timers = [];
   }
+  function story3Time(now) { // follow the voice; a clock carries on after it ends (or without it)
+    const el = (now - s3Start) / 1000;
+    if (narrOK && voice.dataset.clip === "story3") {
+      if (voice.ended) { if (!s3EndedAt) s3EndedAt = now; return voice.duration + (now - s3EndedAt) / 1000; }
+      if (el < voice.currentTime + 3) return voice.currentTime;
+    }
+    return el;
+  }
+  let s3EndedAt = 0;
   function startStory3() {
     state = "story3"; startEl.hidden = true;
     scene.hidden = false; s3Clear();
     tint.style.transition = ""; tint.style.opacity = "0";
     scVid.src = ACT2B_DIR + "texting.mp4" + VER; scVid.load();
+    narrOK = true; s3EndedAt = 0;
+    voice.src = ACT2B_DIR + "story3.mp3" + VER; voice.dataset.clip = "story3";
+    const vp = voice.play(); if (vp && vp.catch) vp.catch(voiceFailed);
     s3Start = performance.now(); s3Beat = -1; s3Base = ""; s3Line = "";
     sub.innerHTML = ""; shown = "";
   }
@@ -897,7 +908,7 @@ body {
     } else if (fx === "end") { s3Clear(); sub.innerHTML = ""; shown = ""; s3Line = ""; state = "end3"; }
   }
   function tickStory3(now) {
-    const t = (now - s3Start) / 1000;
+    const t = story3Time(now);
     while (s3Beat + 1 < S3.length && t >= S3[s3Beat + 1].at) {
       const b = S3[++s3Beat];
       if (b.fx) s3Effect(b);
