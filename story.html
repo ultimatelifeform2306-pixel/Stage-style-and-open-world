@@ -183,8 +183,9 @@ body {
 }
 .bubble small { display: block; font-size: 0.9cqw; opacity: .75; margin-top: 0.4cqw; }
 @keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
-/* the mask and her face: tall pictures shown whole, over a blurred copy */
-.tall { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; }
+/* the mask picture: tall, shown whole over a blurred copy, the camera moves inside it */
+#mwin { position: absolute; top: 0; left: 50%; height: 100%; aspect-ratio: 2 / 3; transform: translateX(-50%); overflow: hidden; opacity: 0; box-shadow: 0 0 0 0.35cqw #000, 0 0 3cqw rgba(0,0,0,.6); }
+#mwin img { position: absolute; max-width: none; display: block; }
 #sc-img.backdrop { filter: blur(2.2cqw) brightness(0.55) saturate(1.2); transform: scale(1.15); }
 #sc-img.blurin { animation: blurin 450ms ease-out both; }
 @keyframes blurin { from { filter: blur(1.6cqw) brightness(1.6); transform: scale(1.25) translateX(6%); } to { filter: none; transform: none; } }
@@ -208,8 +209,7 @@ body {
     <canvas id="train" width="688" height="384" hidden></canvas>
     <div id="bubbles" aria-live="polite"></div>
     <h2 id="rise" aria-live="polite"></h2>
-    <img id="m1" class="tall" alt="" hidden>
-    <img id="m2" class="tall" alt="" hidden>
+    <div id="mwin" hidden><img id="m1" alt=""></div>
     <div id="tint"></div>
     <div id="flash"></div>
     <div id="date" aria-live="polite"></div>
@@ -273,7 +273,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261107c";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261107e";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -757,7 +757,7 @@ body {
   // dur = typing time (defaults to the line's length at 16 letters a second), hold = time after it.
   const ACT2B_DIR = VOICE_DIR + "act2b/";
   const S3_PICS = {};
-  ["map", "spend", "station", "chicken", "zara", "phone", "laugh", "mask1", "mask2"].forEach(n => {
+  ["map", "spend", "station", "chicken", "zara", "phone", "laugh", "mask"].forEach(n => {
     S3_PICS[n] = ACT2B_DIR + n + ".jpg" + VER; const im = new Image(); im.src = S3_PICS[n];
   });
   // at = when it starts (seconds from "September."), timed on story3.mp3 up to the phone scene;
@@ -792,11 +792,11 @@ body {
     { at: 40.52, dur: 0.55, text: "With her," },
     { at: 41.40, dur: 1.94, text: "Kenos acted with two personalities,", add: true },
     { at: 43.79, dur: 3.01, text: "when deep down she wanted his happiness without showing it." },
-    { at: 47.80, fx: "mask1" },     // only the mask
+    { at: 47.80, fx: "mask1" },     // the mask picture, close on the mask only
     { at: 48.16, dur: 0.67, text: "But for her…" },
     { at: 49.14, dur: 1.65, text: "it was not what she was looking for.", add: true },
     { at: 52.65, dur: 1.17, text: "Behind her smile," },
-    { at: 53.90, fx: "mask2" },     // the mask slides away, her face slides in
+    { at: 53.90, fx: "mask2" },     // the camera slides over to her face
     { at: 54.45, dur: 1.29, text: "she was hiding something.", add: true },
     { at: 57.20, fx: "end" },
   ];
@@ -835,6 +835,14 @@ body {
     if (EUROSTAR.complete && EUROSTAR.naturalWidth) tc.drawImage(EUROSTAR, Math.round(x - 34), Math.round(y - 47 - bob));
   }
 
+  // camera framings inside mask.jpg (768x1376): x, y, width, height in the picture's own pixels
+  const MASK_ONLY = { x: 266, y: 372, w: 256, h: 384 }, HER_FACE = { x: 440, y: 350, w: 328, h: 470 };
+  function frameMask(f, sec) {
+    const w = $("mwin"), m1 = $("m1"), W = w.clientWidth || 1, H = w.clientHeight || 1, k = H / f.h;
+    m1.style.transition = sec ? ["left", "top", "width", "height"].map(p => p + " " + sec + "s ease-in-out").join(", ") : "";
+    m1.style.width = (768 * k) + "px"; m1.style.height = (1376 * k) + "px";
+    m1.style.left = (-f.x * k + (W - f.w * k) / 2) + "px"; m1.style.top = (-f.y * k) + "px";
+  }
   let s3Start = 0, s3Beat = -1, s3Base = "", s3Line = "", s3LineAt = 0, s3LineDur = 1, s3Timers = [];
   function s3Clear() {
     s2Black();
@@ -842,7 +850,7 @@ body {
     $("bubbles").textContent = "";
     const r = $("rise"); r.textContent = ""; r.className = "";
     scImg.style.objectPosition = ""; scImg.classList.remove("blurin", "backdrop");
-    ["m1", "m2"].forEach(id => { const m = $(id); m.hidden = true; m.style.transition = ""; m.style.opacity = "0"; m.style.transform = ""; });
+    $("mwin").hidden = true; $("mwin").style.opacity = "0";
     s3Timers.forEach(clearTimeout); s3Timers = [];
   }
   function story3Time(now) { // follow the voice; a clock carries on after it ends (or without it)
@@ -908,19 +916,17 @@ body {
         $("bubbles").append(el); beep(1320, 0.06, "square", 0.03); beep(1760, 0.06, "square", 0.03, 0.06);
       }, 300 + k * 1300)));
     } else if (fx === "laugh") showPic3("laugh", "50% 50%");
-    else if (fx === "mask1") { // the mask alone, whole, slowly coming closer
+    else if (fx === "mask1") { // one picture, seen through a tall camera window: first only the mask
       s3Clear();
-      scImg.src = S3_PICS.mask1; scImg.hidden = false; scImg.classList.add("backdrop");
-      const m1 = $("m1"); m1.src = S3_PICS.mask1; m1.hidden = false;
-      m1.style.transition = ""; m1.style.opacity = "0"; m1.style.transform = "scale(0.96)"; void m1.offsetWidth;
-      m1.style.transition = "opacity 0.5s linear, transform 6s ease-out"; m1.style.opacity = "1"; m1.style.transform = "scale(1.04)";
-    } else if (fx === "mask2") { // the mask slides out to the left, her face slides in from the right
-      const m1 = $("m1"), m2 = $("m2");
-      m2.src = S3_PICS.mask2; m2.hidden = false;
-      m2.style.transition = ""; m2.style.opacity = "0"; m2.style.transform = "translateX(70%)"; void m2.offsetWidth;
-      m1.style.transition = "transform 1.3s ease-in-out, opacity 1.3s ease-in"; m1.style.transform = "translateX(-70%) scale(1.04)"; m1.style.opacity = "0";
-      m2.style.transition = "transform 1.3s ease-in-out, opacity 0.9s ease-out"; m2.style.transform = "translateX(0)"; m2.style.opacity = "1";
-      scImg.src = S3_PICS.mask2; beep(220, 0.25, "triangle", 0.04);
+      scImg.src = S3_PICS.mask; scImg.hidden = false; scImg.classList.add("backdrop");
+      const w = $("mwin"), m1 = $("m1");
+      m1.src = S3_PICS.mask; w.hidden = false;
+      w.style.transition = ""; w.style.opacity = "0";
+      frameMask(MASK_ONLY, 0); void w.offsetWidth;
+      w.style.transition = "opacity 0.5s linear"; w.style.opacity = "1";
+    } else if (fx === "mask2") { // the camera glides across the same picture to her face
+      frameMask(HER_FACE, 1.5);
+      beep(220, 0.25, "triangle", 0.04);
     } else if (fx === "end") { s3Clear(); sub.innerHTML = ""; shown = ""; s3Line = ""; state = "end3"; }
   }
   function tickStory3(now) {
