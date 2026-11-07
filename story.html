@@ -7,7 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Press+Start+2P&display=swap">
 <style>
 /* Layout: one wide 16:9 black screen. Itachi's lines run as movie subtitles at the bottom,
    then a stepped fade and the ACT 1 card in the same black. */
@@ -165,6 +165,27 @@ body {
 #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 #date.red { color: var(--flame); text-shadow: 0.3cqw 0.3cqw 0 var(--ember); }
 
+/* ---- ACT II, part 2: September, KENOS RISE ---- */
+#rise {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  text-align: center; margin: 0;
+  font-family: "Black Ops One", "Impact", "Arial Black", sans-serif; font-weight: 400;
+  font-size: 8.5cqw; letter-spacing: 0.06em;
+  color: var(--gold); text-shadow: 0.5cqw 0.5cqw 0 var(--ember), 0 0 2cqw rgba(232,48,28,.45);
+}
+#rise.caret::after { content: "_"; font-family: var(--font-pixel); font-size: 4cqw; animation: blink 0.6s steps(2) infinite; }
+#train { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+#bubbles { position: absolute; right: 4%; top: 8%; width: 42%; display: flex; flex-direction: column; align-items: flex-end; gap: 1.4cqw; pointer-events: none; }
+.bubble {
+  max-width: 100%; padding: 1.1cqw 1.5cqw; border-radius: 1.6cqw 1.6cqw 0.3cqw 1.6cqw;
+  background: #2f7cf6; color: #fff; font-family: var(--font-pixel); font-size: 1.45cqw; line-height: 1.6;
+  box-shadow: 0.35cqw 0.35cqw 0 rgba(0,0,0,.55); animation: pop 220ms steps(4) both;
+}
+.bubble small { display: block; font-size: 0.9cqw; opacity: .75; margin-top: 0.4cqw; }
+@keyframes pop { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
+#sc-img.blurin { animation: blurin 450ms ease-out both; }
+@keyframes blurin { from { filter: blur(1.6cqw) brightness(1.6); transform: scale(1.25) translateX(6%); } to { filter: none; transform: none; } }
+
 @media (prefers-reduced-motion: reduce) {
   #a2-title.slam, #act2.flash, #stage.quake { animation: none; }
   #sc-img.shake, #sc-img.pan, #sub.waiting { animation: none; }
@@ -181,6 +202,9 @@ body {
     <video id="sc-vid" playsinline preload="auto" hidden></video>
     <canvas id="sc-px" width="256" height="144" hidden></canvas>
     <img id="sc-img2" alt="" hidden>
+    <canvas id="train" width="688" height="384" hidden></canvas>
+    <div id="bubbles" aria-live="polite"></div>
+    <h2 id="rise" aria-live="polite"></h2>
     <div id="tint"></div>
     <div id="flash"></div>
     <div id="date" aria-live="polite"></div>
@@ -244,7 +268,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261106a";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261107a";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -628,7 +652,7 @@ body {
   const scImg2 = $("sc-img2"), tint = $("tint"), flashEl = $("flash");
   const S2_PICS = { members: ACT2_DIR + "members.jpg" + VER, haircut: ACT2_DIR + "haircut.jpg" + VER, face: ACT2_DIR + "face.jpg" + VER };
   Object.values(S2_PICS).forEach(src => { const im = new Image(); im.src = src; });
-  let s2Start = 0, s2Fx = -1, s2Cue = -1, s2Base = "", s2Line = "", s2LineAt = 0, s2LineDur = 1, s2EndedAt = 0, s2RedAt = 0, s2ShakeAt = 0;
+  let s2EndAt = 0, s2Start = 0, s2Fx = -1, s2Cue = -1, s2Base = "", s2Line = "", s2LineAt = 0, s2LineDur = 1, s2EndedAt = 0, s2RedAt = 0, s2ShakeAt = 0;
 
   function s2Black() {
     scImg.hidden = true; scImg.className = ""; scImg.style.transform = ""; scImg.style.transition = ""; scImg.style.opacity = ""; scImg.style.filter = "";
@@ -699,7 +723,7 @@ body {
     } else if (fx === "clap") {
       s2Black(); tint.style.transition = ""; tint.style.opacity = "0";
       sub.innerHTML = ""; shown = ""; s2Line = "";
-      state = "end2"; // the story stops on black
+      state = "end2"; s2EndAt = performance.now(); // a beat of black, then September
     }
   }
 
@@ -723,6 +747,172 @@ body {
       scImg2.style.transform = "scale(1.06) translate(" + dx.toFixed(2) + "%, " + dy.toFixed(2) + "%)";
     }
   }
+  // ===== ACT II, part 2: "September" — KENOS RISE =====
+  // No narration yet: each beat types its line, holds it, then the next beat starts on its own.
+  // dur = typing time (defaults to the line's length at 16 letters a second), hold = time after it.
+  const ACT2B_DIR = VOICE_DIR + "act2b/";
+  const S3_PICS = {};
+  ["map", "spend", "station", "chicken", "zara", "phone", "laugh", "mask"].forEach(n => {
+    S3_PICS[n] = ACT2B_DIR + n + ".jpg" + VER; const im = new Image(); im.src = S3_PICS[n];
+  });
+  const S3 = [
+    { fx: "black",   text: "September.", hold: 1.4 },
+    { fx: "title",   hold: 2.2 },
+    { fx: "map",     text: "He traveled from country to country", hold: 1.0 },
+    { fx: "brussels", text: "Brussels…", hold: 0.9 },
+    { fx: "rotterdam", text: "Rotterdam.", add: true, hold: 2.2 },
+    { fx: "spend",   text: "Spending his money like a fool.", hold: 2.0 },
+    { fx: "station", text: "Kenos sometimes loves to make people happy, buying them things so they never go without…", hold: 1.2 },
+    { text: "Even if he's mean with people… he has a generous heart.", hold: 2.2 },
+    { fx: "chicken", text: "Food for his best friends.", hold: 2.0 },
+    { fx: "zara",    text: "Especially for her… even his mom said he loves her so much.", hold: 2.2 },
+    { fx: "texting", text: "But in messages, Kenos seemed sassy and cold with her…", hold: 2.0 },
+    { fx: "phone",   text: "He acts like this with the people he cares about the most.", hold: 3.6 },
+    { fx: "laugh",   text: "With her, Kenos acted with two personalities,", hold: 0.6 },
+    { text: "when deep down she wanted his happiness without showing it.", hold: 2.2 },
+    { fx: "mask",    text: "But for her… it was not what she was looking for.", hold: 2.2 },
+    { fx: "maskzoom", text: "Behind her smile, she was hiding something.", dur: 4.2, hold: 1.4 },
+    { fx: "end" },
+  ];
+  (function timeS3() { let at = 0; S3.forEach(b => { b.at = at; b.dur = b.dur || (b.text ? b.text.length / 16 : 0); at += b.dur + (b.hold || 0); }); })();
+  // the text messages that pop up on her phone (his texts)
+  const S3_TEXTS = ["I'm gonna break up", "Sike, it's a joke. I love you anyways", "You wanna eat some alloco?"];
+
+  // --- the 16-bit train on the destination map (map.jpg is 1376x768; the canvas is half that) ---
+  const trainCv = $("train"), tc = trainCv.getContext("2d");
+  const STOPS = { paris: [478, 575], lille: [642, 420], brussels: [795, 365], rotterdam: [850, 262] };
+  let trainFrom = STOPS.paris, trainTo = STOPS.lille, trainLegAt = 0, trainLegDur = 2.4, trainOn = false;
+  function trainLeg(to, sec) {
+    trainFrom = trainPos(performance.now()); trainTo = STOPS[to]; trainLegAt = performance.now(); trainLegDur = sec;
+  }
+  function trainPos(now) {
+    const k = Math.min(1, (now - trainLegAt) / 1000 / trainLegDur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    return [trainFrom[0] + (trainTo[0] - trainFrom[0]) * e, trainFrom[1] + (trainTo[1] - trainFrom[1]) * e];
+  }
+  const TRAIN = [ // 14x8 pixel engine and car, drawn 2x
+    "..kkkk........",
+    "..krrk..kkkkkk",
+    "kkkrrkkkkrwwrk",
+    "krrrrrrrkrwwrk",
+    "krryyrrrkrrrrk",
+    "kkkkkkkkkkkkkk",
+    ".kgk.kgk.kgkgk",
+    "..k...k...k.k.",
+  ];
+  const TPAL = { k: "#1a0f0f", r: "#e8301c", y: "#ffd25a", w: "#bfe4ff", g: "#6b6b6b" };
+  function drawTrain(now) {
+    tc.clearRect(0, 0, 688, 384);
+    // Rotterdam: a stop the map doesn't show, added in the map's own style
+    const [rx, ry] = STOPS.rotterdam.map(v => v / 2);
+    tc.fillStyle = "#1a0f0f"; tc.fillRect(rx - 5, ry - 5, 10, 10);
+    tc.fillStyle = Math.floor(now / 400) % 2 ? "#ffd25a" : "#e8301c"; tc.fillRect(rx - 3, ry - 3, 6, 6);
+    tc.font = "8px 'Press Start 2P', monospace"; tc.fillStyle = "#000"; tc.fillText("ROTTERDAM", rx - 76 + 1, ry + 16 + 1);
+    tc.fillStyle = "#fff"; tc.fillText("ROTTERDAM", rx - 76, ry + 16);
+    const [x, y] = trainPos(now).map(v => v / 2), bob = Math.floor(now / 120) % 2;
+    const flip = trainTo[0] < trainFrom[0];
+    TRAIN.forEach((row, j) => [...row].forEach((ch, i) => {
+      if (!TPAL[ch]) return;
+      tc.fillStyle = TPAL[ch];
+      const px = flip ? x + 21 - (i * 3) : x - 21 + i * 3; // drawn 3x so it reads on a phone
+      tc.fillRect(Math.round(px), Math.round(y - 26 + j * 3 + (j > 5 ? 0 : bob)), 3, 3);
+    }));
+    const moving = (now - trainLegAt) / 1000 < trainLegDur;
+    if (moving) for (let p = 0; p < 3; p++) { // puffs of smoke
+      const age = ((now / 600) + p / 3) % 1;
+      tc.fillStyle = "rgba(255,255,255," + (0.8 - age * 0.8).toFixed(2) + ")";
+      const sz = 2 + Math.floor(age * 4);
+      tc.fillRect(Math.round(x + (flip ? 15 : -15) - age * 8), Math.round(y - 28 - age * 14), sz + 1, sz + 1);
+    }
+  }
+
+  let s3Start = 0, s3Beat = -1, s3Base = "", s3Line = "", s3LineAt = 0, s3LineDur = 1, s3Timers = [];
+  function s3Clear() {
+    s2Black();
+    trainOn = false; trainCv.hidden = true;
+    $("bubbles").textContent = "";
+    const r = $("rise"); r.textContent = ""; r.className = "";
+    scImg.style.objectPosition = ""; scImg.classList.remove("blurin");
+    s3Timers.forEach(clearTimeout); s3Timers = [];
+  }
+  function startStory3() {
+    state = "story3"; startEl.hidden = true;
+    scene.hidden = false; s3Clear();
+    tint.style.transition = ""; tint.style.opacity = "0";
+    scVid.src = ACT2B_DIR + "texting.mp4" + VER; scVid.load();
+    s3Start = performance.now(); s3Beat = -1; s3Base = ""; s3Line = "";
+    sub.innerHTML = ""; shown = "";
+  }
+  function showPic3(name, pos) {
+    s3Clear(); scImg.src = S3_PICS[name]; scImg.hidden = false;
+    if (pos) scImg.style.objectPosition = pos;
+  }
+  function s3Effect(b) {
+    const fx = b.fx;
+    if (fx === "black") s3Clear();
+    else if (fx === "title") {
+      s3Clear(); sub.innerHTML = ""; shown = ""; s3Line = "";
+      const r = $("rise"), text = "KENOS RISE"; let i = 0;
+      r.className = "caret";
+      const timer = setInterval(() => {
+        i++; r.textContent = text.slice(0, i);
+        if (text[i - 1] && text[i - 1] !== " ") keyClick();
+        if (i >= text.length) { clearInterval(timer); setTimeout(() => r.classList.remove("caret"), 900); }
+      }, 110);
+    } else if (fx === "map") { // white fades into the map, the train leaves Paris for Lille
+      showPic3("map");
+      flashEl.style.transition = ""; flashEl.style.opacity = "1"; void flashEl.offsetWidth;
+      flashEl.style.transition = "opacity 1s linear"; flashEl.style.opacity = "0";
+      trainCv.hidden = false; trainOn = true;
+      trainFrom = STOPS.paris; trainTo = STOPS.paris; trainLeg("lille", 2.4);
+    } else if (fx === "brussels") { trainLeg("brussels", 1.0); beep(660, 0.08, "square", 0.03); }
+    else if (fx === "rotterdam") { trainLeg("rotterdam", 1.0); beep(880, 0.08, "square", 0.03); }
+    else if (fx === "spend")   showPic3("spend");
+    else if (fx === "station") showPic3("station");
+    else if (fx === "chicken") { // the streak-in transition from the Kenos/Madara clip
+      showPic3("chicken"); void scImg.offsetWidth; scImg.classList.add("blurin");
+      beep(300, 0.18, "sawtooth", 0.03);
+    }
+    else if (fx === "zara")    showPic3("zara");
+    else if (fx === "texting") {
+      s3Clear(); scVid.hidden = false; scVid.muted = true; scVid.currentTime = 0;
+      const p = scVid.play(); if (p && p.catch) p.catch(() => {});
+    } else if (fx === "phone") { // his texts pop up one by one
+      showPic3("phone", "50% 40%");
+      S3_TEXTS.forEach((t, k) => s3Timers.push(setTimeout(() => {
+        if (state !== "story3") return;
+        const el = document.createElement("div"); el.className = "bubble";
+        el.innerHTML = esc(t) + "<small>KENOS · " + (k ? "now" : "1 min") + "</small>";
+        $("bubbles").append(el); beep(1320, 0.06, "square", 0.03); beep(1760, 0.06, "square", 0.03, 0.06);
+      }, 300 + k * 1300)));
+    } else if (fx === "laugh") showPic3("laugh", "50% 50%");
+    else if (fx === "mask")   showPic3("mask", "50% 24%");
+    else if (fx === "maskzoom") { // only the mask, then slide over to her face (both in the mask picture)
+      scImg.style.transition = "transform 1.1s ease-out";
+      scImg.style.transform = "scale(2.3) translate(0.5%, 7%)";
+      s3Timers.push(setTimeout(() => {
+        if (state !== "story3") return;
+        scImg.style.transition = "transform 2.2s ease-in-out";
+        scImg.style.transform = "scale(2.3) translate(-28%, 8%)";
+      }, 1500));
+    } else if (fx === "end") { s3Clear(); sub.innerHTML = ""; shown = ""; s3Line = ""; state = "end3"; }
+  }
+  function tickStory3(now) {
+    const t = (now - s3Start) / 1000;
+    while (s3Beat + 1 < S3.length && t >= S3[s3Beat + 1].at) {
+      const b = S3[++s3Beat];
+      if (b.fx) s3Effect(b);
+      if (state !== "story3") return;
+      if (b.text) { s3Base = b.add ? s3Base + (s3Line ? s3Line + " " : "") : ""; s3Line = b.text; s3LineAt = b.at; s3LineDur = b.dur; }
+      else if (b.fx === "title") { s3Line = ""; s3Base = ""; }
+    }
+    if (s3Line) {
+      const n = Math.min(s3Line.length, Math.floor(s3Line.length * Math.max(0, (t - s3LineAt) / s3LineDur)));
+      const html = esc(s3Base + s3Line.slice(0, n));
+      if (html !== shown) { shown = html; sub.innerHTML = html; }
+    } else if (shown) { shown = ""; sub.innerHTML = ""; }
+    if (trainOn) drawTrain(now);
+  }
+
 
   function setView(name) {
     const v = VIEWS[name];
@@ -871,6 +1061,7 @@ body {
 
   function press() {
     chip();
+    if (state === "idle" && /[?&]jump=s3\b/.test(location.search)) { startStory3(); return; } // test shortcut: straight to September
     if (state === "idle") tryStart(true);
     else if (state === "wait") goToAct();
     else if (state === "act" && performance.now() >= actReadyAt) startAct1();
@@ -908,6 +1099,8 @@ body {
       setTimeout(startStory2, reduce ? 0 : S2.fade * 1000);
     }
     else if (state === "story2") tickStory2(now);
+    else if (state === "end2" && s2EndAt && now - s2EndAt >= 1500) startStory3();
+    else if (state === "story3") tickStory3(now);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
