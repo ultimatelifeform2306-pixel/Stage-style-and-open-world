@@ -292,7 +292,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261108b";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261108c";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
 
   // ---- the voice player ----
@@ -331,7 +331,7 @@ body {
       },
       _start(b) {
         this._stop();
-        const n = ac.createBufferSource(); n.buffer = b; n.connect(ac.destination);
+        const n = ac.createBufferSource(); n.buffer = b; n.connect(speakers());
         const off = Math.min(this._offset, b.duration);
         n.start(0, off);
         this._node = n; this._startAt = ac.currentTime - off; this._playing = true; this._ended = false;
@@ -372,17 +372,28 @@ body {
     if (ac && ac.state === "suspended") ac.resume();
     return ac;
   }
+  // Where every sound goes. On the first tap the audio engine's output is sent into a normal
+  // <audio> player that keeps running: an iPhone plays that like any media, even in silent mode,
+  // and since it never stops, later voices need no new tap. Without it, the plain speakers.
+  let outNode = null;
+  function speakers() { return outNode || (ac ? ac.destination : null); }
   function unlockAudio() { // inside the first tap: wake the audio engine for the whole story
     const a = chip(); if (!a || unlocked) return;
     unlocked = true;
-    try { const b = a.createBuffer(1, 1, 22050), n = a.createBufferSource(); n.buffer = b; n.connect(a.destination); n.start(0); } catch (_) {}
     try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}   // iPhone: play with the silent switch on
-    try { // a silent looping <audio> keeps the iPhone's sound on for the audio engine (older iOS)
-      const keep = new Audio("data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAESsAABErAAABAAgAZGF0YQIAAACAgA==");
-      keep.loop = true; keep.setAttribute("playsinline", ""); keep.volume = 0.01; const kp = keep.play(); if (kp && kp.catch) kp.catch(() => {});
-    } catch (_) {}
+    try { const b = a.createBuffer(1, 1, 22050), n = a.createBufferSource(); n.buffer = b; n.connect(a.destination); n.start(0); } catch (_) {}
+    try {
+      if (a.createMediaStreamDestination) {
+        const dest = a.createMediaStreamDestination(), out = new Audio();
+        out.setAttribute("playsinline", ""); out.autoplay = true; out.srcObject = dest.stream;
+        outNode = dest;   // used straight away, so the intro started by this same tap goes through it
+        const p = out.play();
+        if (p && p.catch) p.catch(() => { outNode = null; });   // the player could not start: plain speakers
+      }
+    } catch (_) { outNode = null; }
     if (voice.src) voice._decode(voice.src).catch(() => {});
   }
+
   function beep(freq, dur, type = "square", vol = 0.04, when = 0) {
     const a = chip(); if (!a) return;
     const t = a.currentTime + when;
@@ -390,7 +401,7 @@ body {
     o.type = type; o.frequency.setValueAtTime(freq, t);
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(a.destination);
+    o.connect(g).connect(speakers());
     o.start(t); o.stop(t + dur + 0.02);
   }
 
@@ -439,7 +450,7 @@ body {
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
     const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
     f.type = "bandpass"; f.frequency.value = 2400 + Math.random() * 600; g.gain.value = 0.35;
-    src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start();
+    src.buffer = buf; src.connect(f).connect(g).connect(speakers()); src.start();
   }
 
   function rumble(sec) { // portal tremor: low filtered noise with a slow wobble
@@ -455,7 +466,7 @@ body {
     g.gain.exponentialRampToValueAtTime(0.25, t + 1.2);
     g.gain.setValueAtTime(0.25, t + sec - 0.8);
     g.gain.exponentialRampToValueAtTime(0.0001, t + sec);
-    src.buffer = buf; src.connect(f).connect(g).connect(a.destination); src.start(t); src.stop(t + sec);
+    src.buffer = buf; src.connect(f).connect(g).connect(speakers()); src.start(t); src.stop(t + sec);
     beep(55, 0.6, "sawtooth", 0.08); beep(41, 0.9, "square", 0.05, 0.05);
     try { navigator.vibrate && navigator.vibrate([280, 80, 200, 80, 400]); } catch (_) {}
   }
