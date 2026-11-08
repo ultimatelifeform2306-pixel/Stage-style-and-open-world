@@ -187,6 +187,25 @@ body {
 #mwin { position: absolute; top: 0; left: 50%; height: 100%; aspect-ratio: 2 / 3; transform: translateX(-50%); overflow: hidden; opacity: 0; box-shadow: 0 0 0 0.35cqw #000, 0 0 3cqw rgba(0,0,0,.6); }
 #mwin img { position: absolute; max-width: none; display: block; }
 #sc-img.backdrop { filter: blur(2.2cqw) brightness(0.55) saturate(1.2); transform: scale(1.15); }
+/* ---- ACT II, part 3: 27 September - 2 October ---- */
+#sc-img.shock { animation: shock-zoom 220ms steps(4) both, shock-shake 520ms steps(8) 220ms; }
+@keyframes shock-zoom { from { transform: scale(1.45); filter: brightness(1.9) contrast(1.3); } to { transform: scale(1.04); filter: none; } }
+@keyframes shock-shake {
+  0% { transform: scale(1.04) translate(1.6%, -1%); } 25% { transform: scale(1.04) translate(-1.4%, 1.2%); }
+  50% { transform: scale(1.04) translate(1%, 0.8%); } 75% { transform: scale(1.04) translate(-0.6%, -0.6%); } 100% { transform: scale(1.04); }
+}
+#m1.bounce { animation: bounce-in 620ms ease-out both; }
+@keyframes bounce-in {
+  0% { transform: scale(0.55); opacity: 0; filter: brightness(2); } 45% { transform: scale(1.14); opacity: 1; }
+  65% { transform: scale(0.94) translateX(-2%); } 82% { transform: scale(1.03) translateX(1.5%); } 100% { transform: scale(1); filter: none; }
+}
+#scene.tvoff { animation: tv-off 650ms ease-in forwards; }
+@keyframes tv-off {
+  0% { transform: none; filter: none; }
+  40% { transform: scaleY(0.012) scaleX(1); filter: brightness(3); }
+  75% { transform: scaleY(0.012) scaleX(0.02); filter: brightness(4); }
+  100% { transform: scaleY(0) scaleX(0); filter: brightness(4); }
+}
 #sc-img.blurin { animation: blurin 450ms ease-out both; }
 @keyframes blurin { from { filter: blur(1.6cqw) brightness(1.6); transform: scale(1.25) translateX(6%); } to { filter: none; transform: none; } }
 
@@ -273,7 +292,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261107e";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261108a";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
   const voice = new Audio(introSrc);
   voice.dataset.clip = "intro";
@@ -837,10 +856,10 @@ body {
 
   // camera framings inside mask.jpg (768x1376): x, y, width, height in the picture's own pixels
   const MASK_ONLY = { x: 266, y: 372, w: 256, h: 384 }, HER_FACE = { x: 440, y: 350, w: 328, h: 470 };
-  function frameMask(f, sec) {
+  function frameMask(f, sec, nw = 768, nh = 1376) {
     const w = $("mwin"), m1 = $("m1"), W = w.clientWidth || 1, H = w.clientHeight || 1, k = H / f.h;
     m1.style.transition = sec ? ["left", "top", "width", "height"].map(p => p + " " + sec + "s ease-in-out").join(", ") : "";
-    m1.style.width = (768 * k) + "px"; m1.style.height = (1376 * k) + "px";
+    m1.style.width = (nw * k) + "px"; m1.style.height = (nh * k) + "px";
     m1.style.left = (-f.x * k + (W - f.w * k) / 2) + "px"; m1.style.top = (-f.y * k) + "px";
   }
   let s3Start = 0, s3Beat = -1, s3Base = "", s3Line = "", s3LineAt = 0, s3LineDur = 1, s3Timers = [];
@@ -850,7 +869,8 @@ body {
     $("bubbles").textContent = "";
     const r = $("rise"); r.textContent = ""; r.className = "";
     scImg.style.objectPosition = ""; scImg.classList.remove("blurin", "backdrop");
-    $("mwin").hidden = true; $("mwin").style.opacity = "0";
+    $("mwin").hidden = true; $("mwin").style.opacity = "0"; $("m1").className = "";
+    scImg.classList.remove("shock"); scene.classList.remove("tvoff");
     s3Timers.forEach(clearTimeout); s3Timers = [];
   }
   function story3Time(now) { // follow the voice; a clock carries on after it ends (or without it)
@@ -861,7 +881,7 @@ body {
     }
     return el;
   }
-  let s3EndedAt = 0;
+  let s3EndedAt = 0, s3EndAt = 0;
   function startStory3() {
     state = "story3"; startEl.hidden = true;
     scene.hidden = false; s3Clear();
@@ -927,7 +947,7 @@ body {
     } else if (fx === "mask2") { // the camera glides across the same picture to her face
       frameMask(HER_FACE, 1.5);
       beep(220, 0.25, "triangle", 0.04);
-    } else if (fx === "end") { s3Clear(); sub.innerHTML = ""; shown = ""; s3Line = ""; state = "end3"; }
+    } else if (fx === "end") { s3Clear(); sub.innerHTML = ""; shown = ""; s3Line = ""; state = "end3"; s3EndAt = performance.now(); }
   }
   function tickStory3(now) {
     const t = story3Time(now);
@@ -945,6 +965,114 @@ body {
     } else if (shown) { shown = ""; sub.innerHTML = ""; }
     if (trainOn) drawTrain(now);
   }
+  // ===== ACT II, part 3: 27 September - 2 October =====
+  // Timed on story4.mp3 (narration + impact, thud and TV-off sounds). at = when, dur = how long it is said.
+  const ACT2C_DIR = VOICE_DIR + "act2c/";
+  const S4_PICS = {};
+  ["rotterdam", "city", "call", "garedunord", "message", "shock", "stare"].forEach(n => {
+    S4_PICS[n] = ACT2C_DIR + n + ".jpg" + VER; const im = new Image(); im.src = S4_PICS[n];
+  });
+  const S4 = [
+    { at: 0.00,  fx: "black" },
+    { at: 0.30,  fx: "dates" },
+    { at: 4.20,  fx: "rotterdam" },
+    { at: 4.61,  dur: 0.62, text: "Kenos" },
+    { at: 5.64,  dur: 1.84, text: "shared his journey in Rotterdam,", add: true },
+    { at: 7.79,  dur: 1.33, text: "helping homeless people,", add: true },
+    { at: 9.35,  fx: "city" },
+    { at: 9.54,  dur: 0.96, text: "visiting the city" },
+    { at: 10.60, fx: "call" },
+    { at: 10.71, dur: 1.08, text: "and giving news.", add: true },
+    { at: 12.80, fx: "garedunord" },
+    { at: 13.14, dur: 1.69, text: "Then he came back to France." },
+    { at: 15.80, fx: "message" },
+    { at: 16.15, dur: 0.87, text: "One message." },
+    { at: 17.60, fx: "shock" },
+    { at: 18.00, dur: 0.72, text: "Then another." },
+    { at: 19.60, fx: "stare" },
+    { at: 20.04, dur: 0.56, text: "Brutal." },
+    { at: 20.95, dur: 0.49, text: "Real…", add: true },
+    { at: 21.85, dur: 2.12, text: "It was the beginning of cursed October." },
+    { at: 24.60, fx: "tvoff" },
+    { at: 25.40, fx: "end" },
+  ];
+  let s4Start = 0, s4Beat = -1, s4Base = "", s4Line = "", s4LineAt = 0, s4LineDur = 1, s4EndedAt = 0;
+  function story4Time(now) {
+    const el = (now - s4Start) / 1000;
+    if (narrOK && voice.dataset.clip === "story4") {
+      if (voice.ended) { if (!s4EndedAt) s4EndedAt = now; return voice.duration + (now - s4EndedAt) / 1000; }
+      if (el < voice.currentTime + 3) return voice.currentTime;
+    }
+    return el;
+  }
+  function startStory4() {
+    state = "story4"; startEl.hidden = true;
+    scene.hidden = false; s3Clear();
+    narrOK = true; s4EndedAt = 0;
+    voice.src = ACT2C_DIR + "story4.mp3" + VER; voice.dataset.clip = "story4";
+    const vp = voice.play(); if (vp && vp.catch) vp.catch(voiceFailed);
+    s4Start = performance.now(); s4Beat = -1; s4Base = ""; s4Line = "";
+    sub.innerHTML = ""; shown = "";
+  }
+  function showPic4(name, pos) {
+    s3Clear(); scImg.src = S4_PICS[name]; scImg.hidden = false;
+    if (pos) scImg.style.objectPosition = pos;
+  }
+  function showTall4(name, nw, nh) { // a tall picture shown whole, over a blurred copy of itself
+    s3Clear(); scImg.src = S4_PICS[name]; scImg.hidden = false; scImg.classList.add("backdrop");
+    const w = $("mwin"); $("m1").src = S4_PICS[name]; w.hidden = false; w.style.transition = ""; w.style.opacity = "1";
+    frameMask({ x: 0, y: 0, w: nw, h: nh }, 0, nw, nh);
+  }
+  function s4Effect(fx) {
+    if (fx === "black") s3Clear();
+    else if (fx === "dates") { // 27 SEPTEMBER - 2 OCTOBER 2026 types out in red
+      s3Clear(); dateEl.className = "red caret";
+      const text = "27 SEPTEMBER - 2 OCTOBER 2026"; let i = 0;
+      const timer = setInterval(() => {
+        i++; dateEl.textContent = text.slice(0, i);
+        if (text[i - 1] && text[i - 1] !== " ") keyClick();
+        if (i >= text.length) { clearInterval(timer); setTimeout(() => dateEl.classList.remove("caret"), 900); }
+      }, 85);
+    } else if (fx === "rotterdam") { // fades in
+      showPic4("rotterdam", "50% 20%");
+      scImg.style.opacity = "0"; void scImg.offsetWidth;
+      scImg.style.transition = "opacity 1s linear"; scImg.style.opacity = "1";
+    }
+    else if (fx === "city")       showPic4("city", "50% 30%");
+    else if (fx === "call")       showPic4("call", "50% 45%");
+    else if (fx === "garedunord") showPic4("garedunord", "50% 35%");
+    else if (fx === "message")    showTall4("message", 1179, 1875);
+    else if (fx === "shock") { // brutal: punch-in zoom, flash, shake
+      showPic4("shock", "50% 30%");
+      void scImg.offsetWidth; scImg.classList.add("shock");
+      flashEl.style.transition = ""; flashEl.style.opacity = "0.85"; void flashEl.offsetWidth;
+      flashEl.style.transition = "opacity 160ms linear"; flashEl.style.opacity = "0";
+      try { navigator.vibrate && navigator.vibrate([90, 40, 160]); } catch (_) {}
+    } else if (fx === "stare") { // fades in with a brutal bounce
+      showTall4("stare", 768, 1376);
+      const m1 = $("m1"); void m1.offsetWidth; m1.className = "bounce";
+    } else if (fx === "tvoff") { // the old TV switching off
+      scene.classList.remove("tvoff"); void scene.offsetWidth; scene.classList.add("tvoff");
+      sub.innerHTML = ""; shown = ""; s4Line = "";
+    } else if (fx === "end") {
+      s3Clear(); sub.innerHTML = ""; shown = ""; s4Line = ""; state = "end4";
+    }
+  }
+  function tickStory4(now) {
+    const t = story4Time(now);
+    while (s4Beat + 1 < S4.length && t >= S4[s4Beat + 1].at) {
+      const b = S4[++s4Beat];
+      if (b.fx) s4Effect(b.fx);
+      if (state !== "story4") return;
+      if (b.text) { s4Base = b.add ? s4Base + (s4Line ? s4Line + " " : "") : ""; s4Line = b.text; s4LineAt = b.at; s4LineDur = b.dur; }
+    }
+    if (s4Line) {
+      const n = Math.min(s4Line.length, Math.floor(s4Line.length * Math.max(0, (t - s4LineAt) / s4LineDur)));
+      const html = esc(s4Base + s4Line.slice(0, n));
+      if (html !== shown) { shown = html; sub.innerHTML = html; }
+    } else if (shown) { shown = ""; sub.innerHTML = ""; }
+  }
+
 
 
   function setView(name) {
@@ -1095,6 +1223,7 @@ body {
   function press() {
     chip();
     if (state === "idle" && /[?&]jump=s3\b/.test(location.search)) { startStory3(); return; } // test shortcut: straight to September
+    if (state === "idle" && /[?&]jump=s4\b/.test(location.search)) { startStory4(); return; } // test shortcut: straight to 27 September
     if (state === "idle") tryStart(true);
     else if (state === "wait") goToAct();
     else if (state === "act" && performance.now() >= actReadyAt) startAct1();
@@ -1134,6 +1263,8 @@ body {
     else if (state === "story2") tickStory2(now);
     else if (state === "end2" && s2EndAt && now - s2EndAt >= 1500) startStory3();
     else if (state === "story3") tickStory3(now);
+    else if (state === "end3" && s3EndAt && now - s3EndAt >= 1000) startStory4();
+    else if (state === "story4") tickStory4(now);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
