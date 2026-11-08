@@ -292,7 +292,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261108c";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261108d";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
 
   // ---- the voice player ----
@@ -331,7 +331,7 @@ body {
       },
       _start(b) {
         this._stop();
-        const n = ac.createBufferSource(); n.buffer = b; n.connect(speakers());
+        const n = ac.createBufferSource(); n.buffer = b; n.connect(voiceOut());
         const off = Math.min(this._offset, b.duration);
         n.start(0, off);
         this._node = n; this._startAt = ac.currentTime - off; this._playing = true; this._ended = false;
@@ -353,6 +353,11 @@ body {
   }
   const voice = makeVoice(introSrc);
   voice.dataset.clip = "intro";
+  // Itachi's intro plays from a plain <audio> player, started by the tap itself: on iPhone that
+  // plays like any media, even in silent mode.
+  const introEl = new Audio(introSrc);
+  introEl.preload = "auto"; introEl.setAttribute("playsinline", "");
+  introEl.addEventListener("error", () => { voiceOK = false; });
   let voiceOK = true;
   voice.addEventListener("error", () => { voiceOK = false; });
 
@@ -361,7 +366,7 @@ body {
   let bakedName = false;
   if (slug) {
     fetch(VOICE_DIR + "voices/" + slug + ".mp3", { method: "HEAD" }).then(r => {
-      if (r.ok && state === "idle") { introSrc = VOICE_DIR + "voices/" + slug + ".mp3" + VER; voice.src = introSrc; voice.load(); bakedName = true; }
+      if (r.ok && state === "idle") { introSrc = VOICE_DIR + "voices/" + slug + ".mp3" + VER; introEl.src = introSrc; introEl.load(); bakedName = true; }
     }).catch(() => {});
   }
 
@@ -372,27 +377,34 @@ body {
     if (ac && ac.state === "suspended") ac.resume();
     return ac;
   }
-  // Where every sound goes. On the first tap the audio engine's output is sent into a normal
-  // <audio> player that keeps running: an iPhone plays that like any media, even in silent mode,
-  // and since it never stops, later voices need no new tap. Without it, the plain speakers.
+  // Sound effects (typing clicks, beeps) go straight to the speakers: no delay.
+  function speakers() { return ac ? ac.destination : null; }
+  // The narration goes through a normal <audio> player fed by the engine and started on the first
+  // tap: an iPhone plays it like any media, and since it keeps running, voices that start later on
+  // their own need no new tap.
   let outNode = null;
-  function speakers() { return outNode || (ac ? ac.destination : null); }
+  function voiceOut() { return outNode || speakers(); }
+  // On iPhone the audio engine is muted in silent mode, except while a normal media player is
+  // playing: so the first tap starts a silent sound file on a loop, which keeps everything audible.
+  const keepAlive = new Audio(VOICE_DIR + "silence.mp3" + VER);
+  keepAlive.loop = true; keepAlive.preload = "auto"; keepAlive.setAttribute("playsinline", "");
   function unlockAudio() { // inside the first tap: wake the audio engine for the whole story
     const a = chip(); if (!a || unlocked) return;
     unlocked = true;
     try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}   // iPhone: play with the silent switch on
+    try { const kp = keepAlive.play(); if (kp && kp.catch) kp.catch(() => {}); } catch (_) {}
     try { const b = a.createBuffer(1, 1, 22050), n = a.createBufferSource(); n.buffer = b; n.connect(a.destination); n.start(0); } catch (_) {}
     try {
       if (a.createMediaStreamDestination) {
         const dest = a.createMediaStreamDestination(), out = new Audio();
         out.setAttribute("playsinline", ""); out.autoplay = true; out.srcObject = dest.stream;
-        outNode = dest;   // used straight away, so the intro started by this same tap goes through it
-        const p = out.play();
-        if (p && p.catch) p.catch(() => { outNode = null; });   // the player could not start: plain speakers
+        outNode = dest;
+        const op = out.play(); if (op && op.catch) op.catch(() => { outNode = null; });
       }
     } catch (_) { outNode = null; }
     if (voice.src) voice._decode(voice.src).catch(() => {});
   }
+
 
   function beep(freq, dur, type = "square", vol = 0.04, when = 0) {
     const a = chip(); if (!a) return;
@@ -1213,8 +1225,8 @@ body {
   function storyTime() {
     // the text follows the voice itself (no separate clock running ahead while the sound loads)
     const el = (performance.now() - startClock) / 1000;
-    if (voiceOK && voice.ended) return Math.max(voice.duration, el);
-    if (voiceOK && el < voice.currentTime + 3) return voice.currentTime;
+    if (voiceOK && introEl.ended) return Math.max(introEl.duration, el);
+    if (voiceOK && el < introEl.currentTime + 3) return introEl.currentTime;
     return el;
   }
 
@@ -1244,9 +1256,9 @@ body {
 
   function tryStart(fromTap) {
     if (fromTap) { try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {} }
-    if (voice.dataset.clip !== "intro") { voice.src = introSrc; voice.dataset.clip = "intro"; } // back from ACT 1 on replay
-    voice.currentTime = 0;
-    const p = voice.play();
+    voice.pause();
+    introEl.currentTime = 0;
+    const p = introEl.play();
     if (p && p.then) {
       p.then(begin).catch(() => {
         if (fromTap) { voiceOK = false; begin(); }   // no sound at all: still show the story
@@ -1259,7 +1271,7 @@ body {
 
   function goToAct() {
     state = "fading";
-    voice.pause();
+    introEl.pause();
     prompt.hidden = true;
     fade.classList.remove("on"); void fade.offsetWidth; fade.classList.add("on");
     setTimeout(showAct, reduce ? 50 : 1000);
