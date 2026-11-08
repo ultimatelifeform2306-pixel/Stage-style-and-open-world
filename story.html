@@ -292,12 +292,67 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261108a";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261108b";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
-  const voice = new Audio(introSrc);
+
+  // ---- the voice player ----
+  // Every voice line plays through the Web Audio engine. iPhones only let a page start sound from a
+  // tap; an <audio> player started later by a timer (most scenes here start on their own) stays
+  // silent there. The audio engine is unlocked once, on the first tap, and can then play every
+  // later line by itself. It offers the few parts of the <audio> player the story uses.
+  let ac = null;
+  function makeVoice(firstSrc) {
+    const files = {};      // url -> Promise of the file's bytes, fetched once
+    const decoded = {};    // url -> Promise of the decoded sound
+    const on = { error: [], ended: [] };
+    const fail = (name) => { const e = new Error(name); e.name = name; return e; };
+    const v = {
+      dataset: {}, _src: "", _buf: null, _node: null, _startAt: 0, _offset: 0, _playing: false, _ended: false, _token: 0,
+      addEventListener(type, fn) { (on[type] = on[type] || []).push(fn); },
+      setAttribute() {}, load() {},
+      get src() { return this._src; },
+      set src(u) {
+        this._token++; this._stop(); this._src = u; this._offset = 0; this._ended = false; this._buf = null;
+        if (!files[u]) files[u] = fetch(u).then(r => { if (!r.ok) throw fail("NotFound"); return r.arrayBuffer(); });
+        files[u].catch(() => { if (this._src === u) on.error.forEach(f => f()); });
+        if (ac) this._decode(u).catch(() => {});   // after the first tap: get it ready right away
+      },
+      _decode(u) {
+        if (!decoded[u]) decoded[u] = files[u].then(ab => new Promise((ok, no) => ac.decodeAudioData(ab.slice(0), ok, no)));
+        return decoded[u];
+      },
+      play() {
+        const u = this._src, tok = ++this._token, a = chip();
+        if (!a) return Promise.reject(fail("NotSupportedError"));
+        return this._decode(u).then(b => {
+          if (tok !== this._token || this._src !== u) throw fail("AbortError");  // skipped meanwhile
+          this._buf = b; this._start(b);
+        });
+      },
+      _start(b) {
+        this._stop();
+        const n = ac.createBufferSource(); n.buffer = b; n.connect(ac.destination);
+        const off = Math.min(this._offset, b.duration);
+        n.start(0, off);
+        this._node = n; this._startAt = ac.currentTime - off; this._playing = true; this._ended = false;
+        n.onended = () => { if (this._node !== n) return; this._node = null; this._playing = false; this._ended = true; this._offset = b.duration; on.ended.forEach(f => f()); };
+      },
+      _stop() {
+        if (this._node) { const n = this._node; this._offset = this.currentTime; this._node = null; n.onended = null; try { n.stop(); } catch (_) {} }
+        this._playing = false;
+      },
+      pause() { this._token++; this._stop(); },
+      get paused() { return !this._playing; },
+      get ended() { return this._ended; },
+      get duration() { return this._buf ? this._buf.duration : NaN; },
+      get currentTime() { return this._playing && ac ? Math.max(0, ac.currentTime - this._startAt) : this._offset; },
+      set currentTime(t) { this._offset = t; if (this._playing && this._buf) this._start(this._buf); },
+    };
+    v.src = firstSrc;
+    return v;
+  }
+  const voice = makeVoice(introSrc);
   voice.dataset.clip = "intro";
-  voice.preload = "auto";
-  voice.setAttribute("playsinline", "");
   let voiceOK = true;
   voice.addEventListener("error", () => { voiceOK = false; });
 
@@ -310,12 +365,23 @@ body {
     }).catch(() => {});
   }
 
-  // ---- 16-bit sound chip ----
-  let ac = null;
+  // ---- 16-bit sound chip (and the audio engine the voices use) ----
+  let unlocked = false;
   function chip() {
     if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
     if (ac && ac.state === "suspended") ac.resume();
     return ac;
+  }
+  function unlockAudio() { // inside the first tap: wake the audio engine for the whole story
+    const a = chip(); if (!a || unlocked) return;
+    unlocked = true;
+    try { const b = a.createBuffer(1, 1, 22050), n = a.createBufferSource(); n.buffer = b; n.connect(a.destination); n.start(0); } catch (_) {}
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (_) {}   // iPhone: play with the silent switch on
+    try { // a silent looping <audio> keeps the iPhone's sound on for the audio engine (older iOS)
+      const keep = new Audio("data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAESsAABErAAABAAgAZGF0YQIAAACAgA==");
+      keep.loop = true; keep.setAttribute("playsinline", ""); keep.volume = 0.01; const kp = keep.play(); if (kp && kp.catch) kp.catch(() => {});
+    } catch (_) {}
+    if (voice.src) voice._decode(voice.src).catch(() => {});
   }
   function beep(freq, dur, type = "square", vol = 0.04, when = 0) {
     const a = chip(); if (!a) return;
@@ -1221,7 +1287,7 @@ body {
   }
 
   function press() {
-    chip();
+    chip(); unlockAudio();
     if (state === "idle" && /[?&]jump=s3\b/.test(location.search)) { startStory3(); return; } // test shortcut: straight to September
     if (state === "idle" && /[?&]jump=s4\b/.test(location.search)) { startStory4(); return; } // test shortcut: straight to 27 September
     if (state === "idle") tryStart(true);
