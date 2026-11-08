@@ -81,6 +81,7 @@ body {
 #timer { width: 18cqw; height: 0.8cqw; background: #1a1a1a; }
 #timer-fill { height: 100%; width: 100%; background: var(--muted); }
 @keyframes blink { 50% { opacity: 0; } }
+.stk { display: inline-block; width: 1.1em; height: 1.5em; margin: -0.3em 0.3em -0.3em 0; vertical-align: middle; background: url(art/rabbid-sticker.png) center / contain no-repeat; transform: rotate(-6deg); }
 
 /* ACT card */
 #fade { position: absolute; inset: 0; background: var(--void); opacity: 0; pointer-events: none; }
@@ -243,7 +244,7 @@ body {
     <div id="a2-date" aria-live="polite"></div>
   </div>
   <p id="sub" aria-live="polite"></p>
-  <div id="start" class="hint" hidden>&#9654; TAP TO START</div>
+  <div id="start" class="hint" hidden><i class="stk" aria-hidden="true"></i> TAP TO START</div>
   <div id="prompt" class="hint" hidden>
     <span>CLICK TO CONTINUE</span>
     <div id="timer"><div id="timer-fill"></div></div>
