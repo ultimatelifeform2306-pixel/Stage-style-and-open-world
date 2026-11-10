@@ -293,7 +293,7 @@ body {
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const VOICE_DIR = "art/";
-  const VER = "?v=20261108d";   // new number on each update so phones don't keep an old copy
+  const VER = "?v=20261110a";   // new number on each update so phones don't keep an old copy
   let introSrc = VOICE_DIR + "itachi_intro.mp3" + VER;
 
   // ---- the voice player ----
@@ -358,6 +358,9 @@ body {
   // plays like any media, even in silent mode.
   const introEl = new Audio(introSrc);
   introEl.preload = "auto"; introEl.setAttribute("playsinline", "");
+  // the V-Devil site's Settings (same website, same storage): music/voice volume and sound effects
+  const LEVEL = (() => { try { const v = JSON.parse(localStorage.getItem("vdevil.settings") || "{}"); return { vol: v.vol ?? 1, sfx: v.sfx ?? 1 }; } catch (_) { return { vol: 1, sfx: 1 }; } })();
+  introEl.volume = LEVEL.vol;
   introEl.addEventListener("error", () => { voiceOK = false; });
   let voiceOK = true;
   voice.addEventListener("error", () => { voiceOK = false; });
@@ -379,12 +382,22 @@ body {
     return ac;
   }
   // Sound effects (typing clicks, beeps) go straight to the speakers: no delay.
-  function speakers() { return ac ? ac.destination : null; }
+  let sfxGain = null, voiceGain = null;
+  function speakers() { // sound effects, at the Sound effects level
+    if (!ac) return null;
+    if (!sfxGain) { sfxGain = ac.createGain(); sfxGain.gain.value = LEVEL.sfx; sfxGain.connect(ac.destination); }
+    return sfxGain;
+  }
+  function voiceLevel(dest) { // voices, at the Volume level
+    if (!voiceGain) { voiceGain = ac.createGain(); voiceGain.gain.value = LEVEL.vol; }
+    try { voiceGain.disconnect(); } catch (_) {}
+    voiceGain.connect(dest); return voiceGain;
+  }
   // The narration goes through a normal <audio> player fed by the engine and started on the first
   // tap: an iPhone plays it like any media, and since it keeps running, voices that start later on
   // their own need no new tap.
   let outNode = null;
-  function voiceOut() { return outNode || speakers(); }
+  function voiceOut() { return ac ? voiceLevel(outNode || ac.destination) : null; }
   // On iPhone the audio engine is muted in silent mode, except while a normal media player is
   // playing: so the first tap starts a silent sound file on a loop, which keeps everything audible.
   const keepAlive = new Audio(VOICE_DIR + "silence.mp3" + VER);
