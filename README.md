@@ -36,6 +36,6 @@ Then "September." and the title KENOS RISE (`art/act2b/`): a 16-bit Eurostar rid
 
 Then "27 SEPTEMBER - 2 OCTOBER 2026" (`art/act2c/`, timed on `story4.mp3` with its impact, thud and TV-off sounds): Rotterdam, the city, the video call, Gare du Nord, one message, the shock, his stare bouncing in, and "the beginning of cursed October" before the picture switches off like an old TV. `?jump=s4` starts straight there.
 
-# Kanel Gang intro
+# Kenos intro (Kanel Gang production)
 
-Open `intro.html` for a 16:9 widescreen intro. Phones held upright see a "turn your phone sideways" screen until they are in landscape. Tap to start: a pixel character rises from the dark, the title slams in letter by letter, then the whole board snaps to purple and "KANEL GANG PRODUCTION" lands on the right. The title is set in `TITLE` at the top of the script, or with `?title=` in the URL. All sounds are 8-bit synth made in the browser.
+Open  for a 16:9 widescreen intro. It is one self-contained file: the Kenos picture () is embedded in it, so it can be sent or opened on its own. Phones held upright see a "turn your phone sideways" screen until they are in landscape. Tap to start: Kenos fades in out of the dark, NEW DANGER drops in letter by letter, the wind swirl draws, 2025 slams, KENOS punches up in purple, then the whole board snaps to purple, his picture slides left and "KANEL GANG PRODUCTION" lands on the right. All sounds are made in the browser.
