@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kenos New Danger</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Press+Start+2P&display=swap">
+<style>
+/* The poster is shown whole (never cropped) at full screen height; extra width is filled
+   with a blurred copy of it. Its own text pieces (cut from the poster) animate in, then the
+   real poster crossfades in so the frame is an exact copy. Then the board snaps purple and
+   "KANEL GANG PRODUCTION" lands on the right. */
+:root {
+  --void: #000;
+  --ink: #fff;
+  --muted: #8a87a8;
+  --purple: #5b17c2;
+  --purple-deep: #1e0650;
+  --font-name: "Archivo Black", "Arial Black", sans-serif;
+  --font-ui: "Press Start 2P", "Courier New", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--void); color: var(--ink);
+  font-family: var(--font-ui); overflow: hidden;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+#stage {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh; height: 100dvh;
+  container-type: size;
+  background: var(--void);
+  overflow: hidden; cursor: pointer;
+}
+
+/* ---- turn-your-phone screen ---- */
+#rotate {
+  display: none; position: fixed; inset: 0; z-index: 20;
+  background: var(--void);
+  flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  padding: 16px; text-align: center; font-size: 12px; line-height: 2;
+}
+#rotate .phone { width: 54px; height: 92px; border: 4px solid var(--ink); border-radius: 9px; position: relative; animation: turn 2.4s ease-in-out infinite; }
+#rotate .phone::after { content: ""; position: absolute; left: 50%; bottom: 6px; width: 12px; height: 4px; margin-left: -6px; border-radius: 2px; background: var(--ink); }
+#rotate b { color: #b06bff; font-weight: 400; }
+#rotate small { color: var(--muted); font-size: 9px; }
+@keyframes turn { 0%, 25% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (max-width: 1024px) {
+  #rotate { display: flex; }
+  #stage { visibility: hidden; }
+}
+
+/* ---- blurred fill for screens wider than the poster ---- */
+#fill {
+  position: absolute; inset: -8%;
+  background: url(__CLEAN__) center / cover;
+  filter: blur(3cqh) brightness(0.6);
+  opacity: 0; transition: opacity 1.4s ease;
+}
+#fill.in { opacity: 1; }
+
+/* ---- the poster box: always the poster's exact shape, as big as the screen allows ---- */
+#poster {
+  position: absolute; left: 50%; top: 50%;
+  width: min(100cqw, calc(100cqh * 1148 / 716));
+  aspect-ratio: 1148 / 716;
+  transform: translate(-50%, -50%);
+  transition: transform 750ms cubic-bezier(.7,0,.2,1);
+}
+#poster.left { transform: translate(calc(-50% - 12cqw), -50%); }
+#poster .layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* soft side edges so the poster melts into the blurred fill (only when there is fill) */
+#poster .edge {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 1.6%, #000 98.4%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 1.6%, #000 98.4%, transparent 100%);
+}
+@container (max-aspect-ratio: 1148 / 716) { #poster .edge { -webkit-mask-image: none; mask-image: none; } }
+#clean { opacity: 0; }
+#clean.in { animation: pic-in 1.8s cubic-bezier(.2,.7,.2,1) forwards; }
+@keyframes pic-in { from { opacity: 0; transform: scale(1.12); filter: brightness(0) blur(1cqh); } to { opacity: 1; transform: none; filter: none; } }
+#final { opacity: 0; transition: opacity 450ms ease; }
+#final.in { opacity: 1; }
+
+/* text pieces cut from the poster, placed at their exact spots */
+.spr { position: absolute; background-size: 100% 100%; background-repeat: no-repeat; pointer-events: none; opacity: 0; }
+.spr.gone { visibility: hidden; }
+.letter.in { animation: drop 420ms cubic-bezier(.3,1.6,.5,1) forwards; }
+@keyframes drop { from { opacity: 0; transform: translateY(-120%) rotate(-10deg); } to { opacity: 1; transform: none; } }
+#swirl.in { animation: wipe 600ms ease-out forwards; }
+@keyframes wipe { from { opacity: 1; clip-path: inset(0 0 0 100%); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+#y2025.in { animation: slam 380ms cubic-bezier(.2,1.4,.4,1) forwards; }
+@keyframes slam { 0% { opacity: 0; transform: scale(3.4); filter: blur(0.5cqh); } 100% { opacity: 1; transform: none; filter: none; } }
+#kenos.in { animation: punch 520ms cubic-bezier(.2,1.5,.4,1) forwards; }
+@keyframes punch { 0% { opacity: 0; transform: translateY(90%) scale(.6); } 100% { opacity: 1; transform: none; } }
+
+/* ---- the purple hit ---- */
+#tint { position: absolute; inset: 0; background: var(--purple); mix-blend-mode: color; opacity: 0; pointer-events: none; }
+#stage.purple #tint { opacity: .78; }
+#panel {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent 38%, rgba(30,6,80,.75) 58%, var(--purple-deep) 86%);
+  transition: opacity 400ms ease;
+}
+#stage.purple #panel { opacity: 1; }
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#flash.hit { background: #d6b8ff; animation: flash 500ms ease-out forwards; }
+#flash.white { animation: flash 220ms ease-out forwards; }
+@keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+.shake { animation: quake 360ms linear 1; }
+@keyframes quake {
+  0% { transform: translate(1%, -0.8%); } 20% { transform: translate(-1.1%, 0.7%); } 40% { transform: translate(0.8%, 0.9%); }
+  60% { transform: translate(-0.6%, -0.6%); } 80% { transform: translate(0.3%, 0.3%); } 100% { transform: none; }
+}
+
+/* ---- right side credit ---- */
+#credit {
+  position: absolute; right: max(5cqw, calc(env(safe-area-inset-right, 0px) + 3cqw)); top: 50%; width: 32cqw;
+  transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2.4cqh;
+  text-align: right; pointer-events: none;
+}
+#credit .gang {
+  font-family: var(--font-name); font-size: min(12cqh, 6.4cqw); line-height: 1.02;
+  color: #fff;
+  -webkit-text-stroke: 1cqh var(--purple-deep); paint-order: stroke fill;
+  text-shadow: 0.8cqh 1cqh 0 #0d0228;
+  transform: translateX(170%);
+}
+#credit .rule { height: 0.8cqh; width: 0; background: #fff; box-shadow: 0 0 2cqh #b06bff; transition: width 500ms ease-out; }
+#credit .prod { font-size: min(3.4cqh, 1.8cqw); letter-spacing: 0.32em; margin-right: -0.32em; color: #e6d4ff; min-height: 1.2em; }
+#credit.in .gang { animation: swipe 520ms cubic-bezier(.2,1.3,.4,1) forwards; }
+#credit.in .rule { width: 100%; }
+@keyframes swipe { to { transform: none; } }
+
+/* ---- hints ---- */
+.hint { position: absolute; left: 0; right: 0; margin: 0; text-align: center; color: #fff; animation: blink 1s steps(2) infinite; }
+#start { top: 50%; transform: translateY(-50%); font-size: min(3.2cqh, 1.8cqw); }
+#replay { bottom: 4cqh; right: max(5cqw, calc(env(safe-area-inset-right, 0px) + 3cqw)); left: auto; font-size: min(2.2cqh, 1.1cqw); color: #e6d4ff; }
+@keyframes blink { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .shake { animation: none; } }
+</style>
+</head>
+<body>
+<div id="rotate" role="alert">
+  <div class="phone" aria-hidden="true"></div>
+  <p>TURN YOUR PHONE<br><b>SIDEWAYS</b></p>
+  <small>The intro plays in landscape</small>
+</div>
+
+<main id="stage" aria-label="Kenos, New Danger 2025, a Kanel Gang production">
+  <div id="fill"></div>
+  <div id="poster">
+    <img class="layer edge" id="clean" src="__CLEAN__" alt="">
+    <img class="layer edge" id="final" src="__POSTER__" alt="Poster: NEW DANGER 2025, KENOS">
+    <div class="spr" id="swirl"></div>
+    <div id="letters"></div>
+    <div class="spr" id="y2025"></div>
+    <div class="spr" id="kenos"></div>
+  </div>
+  <div id="tint"></div>
+  <div id="panel"></div>
+  <div id="credit" aria-label="Kanel Gang production">
+    <div class="gang">KANEL<br>GANG</div>
+    <div class="rule"></div>
+    <div class="prod"></div>
+  </div>
+  <div id="flash"></div>
+  <p class="hint" id="start">TAP TO START</p>
+  <p class="hint" id="replay" hidden>TAP TO REPLAY</p>
+</main>
+
+<script>
+/* where each text piece sits in the poster (pixels of the 1148x716 poster) */
+const GEOM = __GEOM__;
+const SRC = { "t-newdanger": "__T_NEWDANGER__", "t-2025": "__T_2025__", "t-swirl": "__T_SWIRL__", "t-kenos": "__T_KENOS__" };
+
+const $ = (id) => document.getElementById(id);
+const stage = $("stage"), fill = $("fill"), poster = $("poster"), clean = $("clean"), finalPic = $("final"),
+      swirl = $("swirl"), y2025 = $("y2025"), kenos = $("kenos"), lettersBox = $("letters"),
+      credit = $("credit"), flash = $("flash"), prod = credit.querySelector(".prod"),
+      startHint = $("start"), replayHint = $("replay");
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const PW = GEOM.size.w, PH = GEOM.size.h;
+
+function place(el, key) {
+  const g = GEOM[key];
+  Object.assign(el.style, {
+    left: (g.x / PW * 100) + "%", top: (g.y / PH * 100) + "%",
+    width: (g.w / PW * 100) + "%", height: (g.h / PH * 100) + "%",
+    backgroundImage: `url(${SRC[key]})`,
+  });
+}
+place(swirl, "t-swirl"); place(y2025, "t-2025"); place(kenos, "t-kenos");
+
+/* NEW DANGER: one copy of the piece per letter, each clipped to its own letter */
+const ND = GEOM["t-newdanger"], cuts = [ND.x, ...GEOM.letters.cuts, ND.x + ND.w];
+const letters = [];
+for (let i = 0; i < cuts.length - 1; i++) {
+  const el = document.createElement("div");
+  el.className = "spr letter";
+  place(el, "t-newdanger");
+  const l = (cuts[i] - ND.x) / ND.w * 100, r = (ND.x + ND.w - cuts[i + 1]) / ND.w * 100;
+  el.style.clipPath = `inset(0 ${r}% 0 ${l}%)`;
+  el.style.transformOrigin = `${(l + (100 - r)) / 2}% 100%`;
+  lettersBox.append(el); letters.push(el);
+}
+const pieces = [swirl, y2025, kenos, ...letters];
+
+/* ---------- sounds made in Web Audio (no files) ---------- */
+let ac = null;
+function tone({ type = "sine", f0 = 440, f1 = f0, dur = 0.2, vol = 0.15, at = 0 }) {
+  if (!ac) return;
+  const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function noise({ dur = 0.3, vol = 0.25, from = 4000, to = 300 } = {}) {
+  if (!ac) return;
+  const len = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain(), t = ac.currentTime;
+  s.buffer = buf; f.type = "bandpass"; f.Q.value = 0.8;
+  f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f).connect(g).connect(ac.destination); s.start();
+}
+const sfx = {
+  riser: () => { tone({ type: "sawtooth", f0: 60, f1: 240, dur: 1.8, vol: 0.06 }); noise({ dur: 1.8, vol: 0.08, from: 300, to: 3000 }); },
+  whoosh: () => noise({ dur: 0.25, vol: 0.18, from: 2500, to: 500 }),
+  thud: () => { tone({ f0: 120, f1: 45, dur: 0.25, vol: 0.4 }); noise({ dur: 0.08, vol: 0.2, from: 1200, to: 200 }); },
+  slam: () => { tone({ f0: 90, f1: 30, dur: 0.6, vol: 0.55 }); noise({ dur: 0.35, vol: 0.35, from: 3000, to: 150 }); },
+  boom: () => { tone({ type: "sawtooth", f0: 70, f1: 25, dur: 1.4, vol: 0.3 }); tone({ f0: 55, f1: 30, dur: 1.6, vol: 0.5 }); noise({ dur: 0.9, vol: 0.4, from: 5000, to: 100 }); },
+  type: () => tone({ type: "square", f0: 1100, f1: 900, dur: 0.04, vol: 0.04 }),
+};
+
+/* ---------- sequence ---------- */
+function shake() { stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake"); }
+function flashOnce(kind) { flash.className = ""; void flash.offsetWidth; flash.className = kind; }
+
+function reset() {
+  stage.classList.remove("purple", "shake");
+  for (const el of [fill, clean, finalPic, credit, poster, flash, ...pieces]) el.classList.remove("in", "left", "gone", "hit", "white");
+  prod.textContent = "";
+}
+
+let running = false;
+async function play() {
+  if (running) return;
+  running = true;
+  startHint.hidden = true; replayHint.hidden = true;
+  reset();
+  await wait(300);
+
+  // 1. Kenos in the car comes out of the dark
+  sfx.riser();
+  fill.classList.add("in"); clean.classList.add("in");
+  await wait(1800);
+
+  // 2. NEW DANGER drops letter by letter
+  for (const el of letters) { el.classList.add("in"); sfx.thud(); await wait(90); }
+  await wait(300);
+
+  // 3. the swirl sweeps in, then 2025 slams down on it
+  sfx.whoosh(); swirl.classList.add("in");
+  await wait(450);
+  y2025.classList.add("in"); sfx.slam(); shake(); flashOnce("white");
+  await wait(700);
+
+  // 4. KENOS punches up from the bottom
+  sfx.whoosh(); kenos.classList.add("in");
+  await wait(350); sfx.slam(); shake();
+  await wait(500);
+
+  // 5. the real poster takes over: from here the frame is the exact poster
+  finalPic.classList.add("in");
+  await wait(500);
+  for (const el of pieces) el.classList.add("gone");
+  await wait(1800);
+
+  // 6. suddenly: the board goes purple, credit on the right
+  sfx.boom(); flashOnce("hit"); shake();
+  stage.classList.add("purple");
+  poster.classList.add("left");
+  await wait(550);
+  sfx.whoosh(); credit.classList.add("in");
+  await wait(650);
+  for (const ch of "PRODUCTION") { prod.textContent += ch; sfx.type(); await wait(75); }
+
+  await wait(1200);
+  replayHint.hidden = false;
+  running = false;
+}
+
+stage.addEventListener("click", () => {
+  // on phones: go fullscreen and hold landscape where the browser allows it
+  const de = document.documentElement;
+  if (!document.fullscreenElement && de.requestFullscreen && matchMedia("(pointer: coarse)").matches) {
+    de.requestFullscreen({ navigationUI: "hide" }).then(() => screen.orientation?.lock?.("landscape")).catch(() => {});
+  }
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { ac = null; } }
+  if (ac && ac.state === "suspended") ac.resume();
+  play();
+});
+reset();
+</script>
+</body>
+</html>

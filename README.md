@@ -38,6 +38,8 @@ Then "27 SEPTEMBER - 2 OCTOBER 2026" (`art/act2c/`, timed on `story4.mp3` with i
 
 # Kenos intro (Kanel Gang production)
 
-Open `intro.html` for a full-screen widescreen intro: it fills the whole screen with no black bars, and on phones the first tap goes fullscreen where the browser allows it. It is one self-contained file with the picture embedded, so it can be sent or opened on its own. Phones held upright see a "turn your phone sideways" screen until they are in landscape.
+Open `intro.html` and tap to start. It is one self-contained file (all pictures embedded), so it can be sent or opened on its own. Phones held upright see a "turn your phone sideways" screen; on phones the first tap also goes fullscreen where the browser allows it.
 
-The picture is `art/intro/kenos-wide.jpg`: the wide car poster with its baked-in text removed (patched from the same drawing in `art/intro/kenos.jpg`), so the title and name can be animated live. Tap to start: Kenos fades in, NEW DANGER drops in letter by letter (Squada One, blue with a white outline like the poster), the wind swirl draws, 2025 slams, KENOS punches up in purple (Archivo Black), then the whole board snaps purple, the scene slides left and "KANEL GANG PRODUCTION" lands on the right. All sounds are made in the browser.
+The poster (`art/intro/poster.jpg`) is always shown whole at full screen height; any extra width is filled with a blurred copy of it. Its own text is cut out of it (`t-newdanger.png`, `t-2025.png`, `t-swirl.png`, `t-kenos.png`) over a text-free copy (`kenos-wide.jpg`, patched from the square art `kenos.jpg`): NEW DANGER drops in letter by letter, the swirl sweeps in, 2025 slams, KENOS punches up, then the real poster crossfades in, so that frame is an exact copy of the poster. Then the whole board snaps purple, the poster slides left and "KANEL GANG PRODUCTION" lands on the right. All sounds are made in the browser.
+
+To rebuild after changing a picture or the page: `pip install pillow numpy scipy`, then `python3 art/intro/tools/cut_text.py` (cuts the text pieces) and `python3 art/intro/tools/build_intro.py` (writes `intro.html` from `art/intro/tools/intro.src.html`).
