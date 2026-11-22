@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kanel Gang Intro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Press+Start+2P&display=swap">
+<style>
+/* One 16:9 widescreen stage. Phones held upright get a "turn your phone" screen instead.
+   Sequence: character rises out of the dark -> title slams in letter by letter ->
+   the whole board snaps to purple and "KANEL GANG PRODUCTION" lands on the right. */
+:root {
+  --void: #000000;
+  --ink: #f4f1ff;
+  --muted: #7d7a99;
+  --gold: #ffd25a;
+  --ember: #8a1408;
+  --purple: #5a17b8;
+  --purple-deep: #2a0a5e;
+  --purple-hot: #c79bff;
+  --font-pixel: "Press Start 2P", "Courier New", ui-monospace, monospace;
+  --font-title: "Black Ops One", "Impact", "Arial Black", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-pixel);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#stage {
+  position: relative;
+  width: min(100%, calc((100dvh - 24px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  background: var(--void);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+/* ---- turn-your-phone screen (portrait phones and tablets only) ---- */
+#rotate {
+  display: none;
+  position: fixed; inset: 0; z-index: 10;
+  background: var(--void);
+  flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+  padding: 16px; text-align: center;
+  font-size: 12px; line-height: 2;
+}
+#rotate .phone {
+  width: 54px; height: 92px;
+  border: 4px solid var(--ink); border-radius: 8px;
+  position: relative;
+  animation: turn 2.4s steps(6) infinite;
+}
+#rotate .phone::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 10px; height: 4px; margin-left: -5px; background: var(--ink); }
+#rotate small { color: var(--muted); font-size: 9px; }
+@keyframes turn { 0%, 25% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (max-width: 1024px) {
+  #rotate { display: flex; }
+  #stage { visibility: hidden; }
+}
+
+/* ---- board layers ---- */
+#bg { position: absolute; inset: 0; background: var(--void); }
+#bg.purple {
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 0.25cqw, transparent 0.25cqw 0.5cqw),
+    radial-gradient(ellipse at 30% 60%, #7a2be0 0%, var(--purple) 45%, var(--purple-deep) 100%);
+}
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#flash.white { animation: flash 260ms steps(3) forwards; }
+#flash.violet { background: var(--purple-hot); animation: flash 420ms steps(4) forwards; }
+@keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+/* character: drawn as pixel art on a tiny canvas, scaled up crisp */
+#hero {
+  position: absolute;
+  left: 50%; bottom: 0;
+  height: 66%;
+  aspect-ratio: 32 / 48;
+  transform: translateX(-50%);
+  image-rendering: pixelated; image-rendering: crisp-edges;
+  opacity: 0;
+  transition: left 600ms steps(8), filter 300ms steps(3);
+}
+#hero.rise { animation: rise 1500ms steps(10) forwards; }
+#hero.idle { opacity: 1; animation: bob 1.2s steps(2) infinite; }
+#hero.left { left: 27%; }
+#hero.shadow { filter: brightness(0) drop-shadow(0.6cqw 0 0 var(--purple-hot)); }
+@keyframes rise { 0% { opacity: 0; transform: translate(-50%, 12%); filter: brightness(0); } 60% { opacity: 1; filter: brightness(0.35); } 100% { opacity: 1; transform: translate(-50%, 0); filter: none; } }
+@keyframes bob { 50% { transform: translate(-50%, -0.6%); } }
+
+/* title */
+#title {
+  position: absolute; left: 0; right: 0; top: 12%;
+  margin: 0;
+  display: flex; justify-content: center;
+  font-family: var(--font-title); font-weight: 400;
+  font-size: 11cqw; letter-spacing: 0.06em;
+  color: var(--gold);
+  text-shadow: 0.6cqw 0.6cqw 0 var(--ember), -0.25cqw -0.25cqw 0 #000;
+  transition: color 200ms steps(2), text-shadow 200ms steps(2);
+}
+#title .ch { display: inline-block; min-width: 0.3em; opacity: 0; }
+#title .ch.in { animation: slam-ch 320ms steps(4) forwards; }
+@keyframes slam-ch {
+  0% { opacity: 1; transform: scale(3.2) rotate(-8deg); filter: brightness(3); }
+  70% { transform: scale(0.92); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+#title.purple { color: #fff; text-shadow: 0.6cqw 0.6cqw 0 var(--purple-deep), -0.25cqw -0.25cqw 0 #000; }
+.shake { animation: quake 300ms steps(6) 1; }
+@keyframes quake {
+  0% { transform: translate(1.2%, -0.8%); } 33% { transform: translate(-1%, 0.9%); }
+  66% { transform: translate(0.6%, 0.5%); } 100% { transform: none; }
+}
+
+/* production credit, right side */
+#credit {
+  position: absolute; right: 6%; top: 50%;
+  width: 40%;
+  transform: translateY(-30%);
+  text-align: right;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1.6cqw;
+}
+#credit .gang {
+  font-family: var(--font-title); font-size: 6.4cqw; line-height: 1; letter-spacing: 0.04em;
+  color: #fff; text-shadow: 0.5cqw 0.5cqw 0 var(--purple-deep);
+  transform: translateX(140%);
+}
+#credit .rule { height: 0.5cqw; width: 0; background: var(--gold); box-shadow: 0 0.5cqw 0 var(--ember); transition: width 500ms steps(10); }
+#credit .prod { font-size: 2.2cqw; letter-spacing: 0.25em; color: var(--gold); min-height: 1.2em; }
+#credit.in .gang { animation: swipe 420ms steps(6) forwards; }
+#credit.in .rule { width: 100%; }
+@keyframes swipe { 0% { transform: translateX(140%); } 80% { transform: translateX(-4%); } 100% { transform: none; } }
+
+/* start / replay hint */
+.hint {
+  position: absolute; left: 0; right: 0; text-align: center;
+  font-size: 1.8cqw; color: var(--ink);
+  animation: blink 1s steps(2) infinite;
+}
+#start { top: 50%; transform: translateY(-50%); }
+#replay { bottom: 4%; font-size: 1.2cqw; color: var(--purple-hot); }
+@keyframes blink { 50% { opacity: 0; } }
+.stk { display: inline-block; width: 1.1em; height: 1.5em; margin: -0.3em 0.4em -0.3em 0; vertical-align: middle; background: url(art/rabbid-sticker.png) center / contain no-repeat; transform: rotate(-6deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .shake, #hero.idle { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="rotate" role="alert">
+  <div class="phone" aria-hidden="true"></div>
+  <p>TURN YOUR PHONE<br>SIDEWAYS</p>
+  <small>The intro plays in landscape</small>
+</div>
+
+<main id="stage" aria-label="Kanel Gang Production intro">
+  <div id="bg"></div>
+  <canvas id="hero" width="32" height="48" aria-hidden="true"></canvas>
+  <h1 id="title" aria-label=""></h1>
+  <div id="credit" aria-hidden="true">
+    <div class="gang">KANEL<br>GANG</div>
+    <div class="rule"></div>
+    <div class="prod"></div>
+  </div>
+  <div id="flash"></div>
+  <p class="hint" id="start"><span class="stk"></span>TAP TO START</p>
+  <p class="hint" id="replay" hidden>TAP TO REPLAY</p>
+</main>
+
+<script>
+/* Title text: change it here, or pass ?title=YOUR+TITLE in the URL. */
+const TITLE = (new URLSearchParams(location.search).get("title") || "STAGE STYLE").toUpperCase();
+
+const $ = (id) => document.getElementById(id);
+const stage = $("stage"), bg = $("bg"), hero = $("hero"), title = $("title"),
+      credit = $("credit"), flash = $("flash"), startHint = $("start"), replayHint = $("replay");
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ---------- pixel character (32x48), placeholder until the reference art is in ---------- */
+const PAL = { K: "#0b0a14", H: "#2b1d3a", h: "#3e2b55", S: "#c98a5e", s: "#9a6340", E: "#ffffff",
+              R: "#e8301c", r: "#8a1408", J: "#1d2140", j: "#2f3566", G: "#ffd25a", P: "#3a2a1a", W: "#f4f1ff" };
+const SPRITE = [
+  "...........KKKKKKKKKK...........",
+  ".........KKHHHHHHHHHHKK.........",
+  "........KHHHhhhhhhhhHHHK........",
+  ".......KHHhhhhhhhhhhhhHHK.......",
+  ".......KHhhhhhhhhhhhhhhHK.......",
+  "......KHhhKKKKKKKKKKKKhhHK......",
+  "......KHhKSSSSSSSSSSSSKhHK......",
+  "......KHKSSSSSSSSSSSSSSKHK......",
+  "......KHKSSKKSSSSSSKKSSKHK......",
+  "......KHKSKEEKSSSSKEEKSKHK......",
+  "......KHKSSKKSSSSSSKKSSKHK......",
+  "......KHKSSSSSSssSSSSSSKHK......",
+  "......KHKsSSSSSSSSSSSSsKHK......",
+  ".......KKsSSSKKKKKKSSSsKK.......",
+  ".......KRRsSSSSSSSSSSsRRK.......",
+  "......KRRRRssSSSSSSssRRRRK......",
+  ".....KRRRRRRRsssssssRRRRRRK.....",
+  "....KJJRRRRRRRRRRRRRRRRRRJJK....",
+  "...KJJJJrRRRRRRRRRRRRRRrJJJJK...",
+  "...KJjJJJrrRRRRRRRRRRrrJJJjJK...",
+  "..KJjjJJJJJrrrrrrrrrrJJJJJjjJK..",
+  "..KJjjJJJJJJJJGGJJJJJJJJJJjjJK..",
+  "..KJjjJKJJJJJJGGJJJJJJJKJJjjJK..",
+  "..KJjJKKJJJJJJJJJJJJJJJKKJjJJK..",
+  "..KJjJKKJJJJJJGGJJJJJJJKKJjJJK..",
+  "..KJjJKKJJJJJJGGJJJJJJJKKJjJJK..",
+  "..KSSKKKJJJJJJJJJJJJJJJKKKSSK...",
+  "..KSSSKKJJJJJJJJJJJJJJJKKSSSK...",
+  "...KSSKKGGGGGGGGGGGGGGGGKKSSK...",
+  "....KKKKJJJJJJJKKJJJJJJJKKKK....",
+  ".......KJJJJJJJKKJJJJJJJK.......",
+  ".......KJjJJJJJKKJJJJJjJK.......",
+  ".......KJjJJJJJKKJJJJJjJK.......",
+  ".......KJjJJJJJKKJJJJJjJK.......",
+  ".......KJjJJJJK..KJJJJjJK.......",
+  ".......KJjJJJJK..KJJJJjJK.......",
+  ".......KJjJJJJK..KJJJJjJK.......",
+  ".......KJJJJJJK..KJJJJJJK.......",
+  ".......KJJJJJJK..KJJJJJJK.......",
+  ".......KJJJJJJK..KJJJJJJK.......",
+  "......KKKKKKKKK..KKKKKKKKK......",
+  "......KWWWWWWWK..KWWWWWWWK......",
+  ".....KWWWWWWWWK..KWWWWWWWWK.....",
+  ".....KRRRRRRRRK..KRRRRRRRRK.....",
+  ".....KKKKKKKKKK..KKKKKKKKKK.....",
+  "................................",
+  "................................",
+  "................................",
+];
+(function drawHero() {
+  const c = hero.getContext("2d");
+  SPRITE.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (PAL[ch]) { c.fillStyle = PAL[ch]; c.fillRect(x, y, 1, 1); }
+  }));
+})();
+
+/* ---------- 8-bit sounds made in Web Audio (no files needed) ---------- */
+let ac = null;
+function tone({ type = "square", f0 = 440, f1 = f0, dur = 0.15, vol = 0.15, at = 0 }) {
+  if (!ac) return;
+  const t = ac.currentTime + at, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), t + dur);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur = 0.25, vol = 0.25) {
+  if (!ac) return;
+  const len = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+  const s = ac.createBufferSource(), g = ac.createGain();
+  s.buffer = buf; g.gain.value = vol;
+  s.connect(g).connect(ac.destination); s.start();
+}
+const sfx = {
+  rise: () => tone({ type: "triangle", f0: 55, f1: 220, dur: 1.4, vol: 0.2 }),
+  slam: () => { tone({ f0: 180, f1: 60, dur: 0.18, vol: 0.18 }); noise(0.12, 0.15); },
+  boom: () => { tone({ type: "sawtooth", f0: 90, f1: 30, dur: 0.9, vol: 0.25 }); noise(0.6, 0.35); },
+  swipe: () => tone({ type: "square", f0: 300, f1: 1400, dur: 0.25, vol: 0.08 }),
+  type: () => tone({ f0: 900, f1: 700, dur: 0.04, vol: 0.05 }),
+};
+
+/* ---------- sequence ---------- */
+function shake() { stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake"); }
+function flashOnce(kind) { flash.className = ""; void flash.offsetWidth; flash.className = kind; }
+
+function reset() {
+  bg.className = ""; hero.className = ""; title.className = ""; credit.className = "";
+  credit.querySelector(".prod").textContent = "";
+  title.innerHTML = "";
+  [...TITLE].forEach((ch) => {
+    const s = document.createElement("span");
+    s.className = "ch"; s.textContent = ch === " " ? " " : ch;
+    title.append(s);
+  });
+  title.setAttribute("aria-label", TITLE);
+}
+
+let running = false;
+async function play() {
+  if (running) return;
+  running = true;
+  startHint.hidden = true; replayHint.hidden = true;
+  reset();
+  await wait(400);
+
+  // 1. character rises out of the dark
+  sfx.rise();
+  hero.classList.add("rise");
+  await wait(1600);
+  hero.className = "idle";
+  await wait(500);
+
+  // 2. title slams in letter by letter
+  for (const ch of title.children) {
+    ch.classList.add("in");
+    if (ch.textContent.trim()) { sfx.slam(); shake(); }
+    await wait(ch.textContent.trim() ? 150 : 90);
+  }
+  flashOnce("white");
+  await wait(1700);
+
+  // 3. suddenly: the board goes purple, credit lands on the right
+  sfx.boom();
+  flashOnce("violet");
+  shake();
+  bg.className = "purple";
+  title.classList.add("purple");
+  hero.className = "idle left shadow";
+  await wait(500);
+  sfx.swipe();
+  credit.classList.add("in");
+  await wait(600);
+  const prod = credit.querySelector(".prod");
+  for (const ch of "PRODUCTION") { prod.textContent += ch; sfx.type(); await wait(70); }
+
+  await wait(1500);
+  replayHint.hidden = false;
+  running = false;
+}
+
+stage.addEventListener("click", () => {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { ac = null; } }
+  if (ac && ac.state === "suspended") ac.resume();
+  play();
+});
+reset();
+</script>
+</body>
+</html>

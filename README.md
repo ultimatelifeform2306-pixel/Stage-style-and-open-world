@@ -35,3 +35,7 @@ Five seconds after the ACT II card it fades to black and ACT II begins on its ow
 Then "September." and the title KENOS RISE (`art/act2b/`): a 16-bit Eurostar rides the destination map from Paris to Lille, Brussels and Rotterdam, then the spending, the station, the chicken spot, Zara, the texting clip, his texts popping up on her phone, the KFC pair and the mask, ending on black. It is all timed on `story3.mp3`, and ends inside the mask picture: a tall camera window frames only the mask, then glides to her face before the cut to black. Add `?jump=s3` to the URL to start straight at September when testing.
 
 Then "27 SEPTEMBER - 2 OCTOBER 2026" (`art/act2c/`, timed on `story4.mp3` with its impact, thud and TV-off sounds): Rotterdam, the city, the video call, Gare du Nord, one message, the shock, his stare bouncing in, and "the beginning of cursed October" before the picture switches off like an old TV. `?jump=s4` starts straight there.
+
+# Kanel Gang intro
+
+Open `intro.html` for a 16:9 widescreen intro. Phones held upright see a "turn your phone sideways" screen until they are in landscape. Tap to start: a pixel character rises from the dark, the title slams in letter by letter, then the whole board snaps to purple and "KANEL GANG PRODUCTION" lands on the right. The title is set in `TITLE` at the top of the script, or with `?title=` in the URL. All sounds are 8-bit synth made in the browser.
